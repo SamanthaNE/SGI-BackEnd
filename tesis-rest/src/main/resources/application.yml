@@ -1,0 +1,28 @@
+server:
+  port: 8088
+  servlet:
+    context-path: /tesis-rest
+    encoding:
+      charset: UTF-8
+      force-response: true
+
+spring:
+  application:
+    name: tesis-rest
+  datasource:
+    url: jdbc:mysql://localhost:3306/pucpcris
+    username: pucpcris
+    password: tesisPUCPCRIS2024
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+springdoc:
+  swagger-ui:
+    operations-sorter: method
+    tags-sorter: alpha
+
+config:
+  key-code: vBxv7hNN8SSeEPVv4gXjVzUrdZXjCUEnZEjDyE2VvVd5Wszk2MqdcUMFdyfKfEk3
