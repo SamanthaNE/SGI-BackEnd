@@ -7,10 +7,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import pe.edu.pucp.tesisrest.researcher.dto.request.PublicationAuthorDetailRequest;
-import pe.edu.pucp.tesisrest.researcher.dto.request.PublicationAuthorListRequest;
-import pe.edu.pucp.tesisrest.researcher.dto.response.PublicationAuthorDetailResponse;
-import pe.edu.pucp.tesisrest.researcher.dto.response.PublicationAuthorListResponse;
+import pe.edu.pucp.tesisrest.researcher.dto.request.*;
+import pe.edu.pucp.tesisrest.researcher.dto.response.*;
 import pe.edu.pucp.tesisrest.researcher.service.PerformanceEvaluationService;
 
 @Slf4j
@@ -31,5 +29,23 @@ public class PerformanceEvaluation {
     @Operation(summary = "Obtain detail of a publication by publication_id")
     public PublicationAuthorDetailResponse getPublicationDetailById(@ModelAttribute PublicationAuthorDetailRequest request){
         return performanceEvaluationService.getPublicationDetailById(request);
+    }
+
+    @GetMapping(value = "/projects")
+    @Operation(summary = "Obtain projects by idPerson")
+    public ProjectAuthorListResponse getFundingRelatedList(@ModelAttribute ProjectAuthorListRequest request){
+        return performanceEvaluationService.getProjectAuthorList(request);
+    }
+
+    @GetMapping(value = "/projectdetail")
+    @Operation(summary = "Obtain detail of a publication by publication_id")
+    public ProjectAuthorDetailResponse getProjectDetailById(@ModelAttribute ProjectAuthorDetailRequest request){
+        return performanceEvaluationService.getProjectDetailById(request);
+    }
+
+    @GetMapping(value = "/relatedFunding")
+    @Operation(summary = "Obtain the financing related to a project by idproject")
+    public FundingListResponse getFundingRelatedList(@ModelAttribute FundingListRequest request){
+        return performanceEvaluationService.getFundingRelatedList(request);
     }
 }

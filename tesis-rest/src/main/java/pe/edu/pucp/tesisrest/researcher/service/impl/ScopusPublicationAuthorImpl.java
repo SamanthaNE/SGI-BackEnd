@@ -210,10 +210,13 @@ public class ScopusPublicationAuthorImpl implements ScopusPublicationAuthorServi
         sql.append(" org.Name, ");
         sql.append(" org.Acronym, ");
         sql.append(" org.PartOf, ");
-        sql.append(" pa.idPerson_Role");
+        sql.append(" pa.idPerson_Role, ");
+        sql.append(" orggro.Status, ");
+        sql.append(" orggro.Category ");
 
         sql.append(" FROM person_affiliation pa ");
         sql.append(" JOIN orgunit org ON pa.idOrgUnit = org.idOrgUnit ");
+        sql.append(" JOIN orgunit_group orggro ON org.idOrgUnit = orggro.idOrgUnit ");
         sql.append(" WHERE org.idOrgUnit_Type = \"GRUPO\"");
         sql.append(" AND pa.idPerson = :idPerson");
 
@@ -239,6 +242,8 @@ public class ScopusPublicationAuthorImpl implements ScopusPublicationAuthorServi
                 groupDto.setAcronym(item[3] != null ? item[3].toString() : null);
                 groupDto.setPartOf(item[4] != null ? item[4].toString() : null);
                 groupDto.setIdPersonRole(item[5] != null ? item[5].toString() : null);
+                groupDto.setStatusGroup(item[6] != null ? item[6].toString() : null);
+                groupDto.setCategoryGroup(item[7] != null ? item[7].toString() : null);
 
                 response.getResult().add(groupDto);
             }

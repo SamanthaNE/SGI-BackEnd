@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class AuthorResearcherDto {
-    private Long idPerson;
+    private String idPerson;
     private String idOrgUnit;
     private String surname;
     private String givenName;
