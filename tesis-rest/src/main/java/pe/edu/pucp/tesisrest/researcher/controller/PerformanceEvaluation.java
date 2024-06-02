@@ -38,7 +38,7 @@ public class PerformanceEvaluation {
     }
 
     @GetMapping(value = "/projectdetail")
-    @Operation(summary = "Obtain detail of a publication by publication_id")
+    @Operation(summary = "Obtain detail of a project by idProject")
     public ProjectAuthorDetailResponse getProjectDetailById(@ModelAttribute ProjectAuthorDetailRequest request){
         return performanceEvaluationService.getProjectDetailById(request);
     }
@@ -47,5 +47,17 @@ public class PerformanceEvaluation {
     @Operation(summary = "Obtain the financing related to a project by idproject")
     public FundingListResponse getFundingRelatedList(@ModelAttribute FundingListRequest request){
         return performanceEvaluationService.getFundingRelatedList(request);
+    }
+
+    @GetMapping(value = "/researchgroups")
+    @Operation(summary = "Obtain research groups by idPerson")
+    public ResearchGroupListResponse getResearchGroupList(@ModelAttribute ResearchGroupListRequest request){
+        return performanceEvaluationService.getResearchGroupList(request);
+    }
+
+    @GetMapping(value = "/researchgroupdetail")
+    @Operation(summary = "Obtain detail of a research group by idOrgUnit")
+    public ResearchGroupDetailResponse getResearchGroupDetail(@ModelAttribute ResearchGroupDetailRequest request){
+        return performanceEvaluationService.getResearchGroupDetail(request);
     }
 }

@@ -11,4 +11,5 @@ public class UserDto {
     private String familyNames;
     private String idPersonRole;
     private String roleName;
+    private String idOrgUnit;
 }

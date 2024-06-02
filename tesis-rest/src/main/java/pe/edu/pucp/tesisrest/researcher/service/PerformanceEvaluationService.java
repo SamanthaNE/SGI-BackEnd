@@ -12,4 +12,7 @@ public interface PerformanceEvaluationService {
     ProjectAuthorDetailResponse getProjectDetailById(ProjectAuthorDetailRequest request);
 
     FundingListResponse getFundingRelatedList(FundingListRequest request);
+
+    ResearchGroupListResponse getResearchGroupList(ResearchGroupListRequest request);
+    ResearchGroupDetailResponse getResearchGroupDetail(ResearchGroupDetailRequest request);
 }

@@ -9,6 +9,7 @@ public class ResearchGroupDto {
     private String name;
     private String acronym;
     private String partOf;
+    private String namePartOf;
     private String idPersonRole;
     private String statusGroup;
     private String categoryGroup;

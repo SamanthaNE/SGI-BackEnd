@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.CollectionUtils;
 import pe.edu.pucp.tesisrest.common.enums.ResultCodeEnum;
+import pe.edu.pucp.tesisrest.common.repository.OrgUnitRepository;
 import pe.edu.pucp.tesisrest.common.util.ValidationUtils;
 import pe.edu.pucp.tesisrest.researcher.dto.*;
 import pe.edu.pucp.tesisrest.researcher.dto.request.*;
@@ -21,6 +22,7 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
 
     private final ValidationUtils validationUtils;
     private final EntityManager entityManager;
+    private final OrgUnitRepository orgunitRepository;
 
     @Override
     public PublicationAuthorListResponse getPublicationAuthorList(PublicationAuthorListRequest request) {
@@ -131,7 +133,7 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
                 authors = getAuthorsOfPublication(pubAuthorDto.getPublicationId());
                 pubAuthorDto.setAuthorsList(authors);
 
-                projects = getRelatedProjects(pubAuthorDto.getPublicationId());
+                projects = getProjectsRelatedToPublication(pubAuthorDto.getPublicationId());
                 pubAuthorDto.setRelatedProjects(projects);
 
                 response.setPublicationAuthorDetail(pubAuthorDto);
@@ -144,7 +146,7 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
         return response;
     }
 
-    private List<ProjectAuthorDto> getRelatedProjects(Long publicationId) {
+    private List<ProjectAuthorDto> getProjectsRelatedToPublication(Long publicationId) {
         List<ProjectAuthorDto> projects = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
 
@@ -292,44 +294,6 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
         return response;
     }
 
-    private List<ResearcherDto> getProjectTeam(Long idProject) {
-        List<ResearcherDto> researchers = new ArrayList<>();
-        StringBuilder sql = new StringBuilder();
-
-        sql.append(" SELECT ");
-        sql.append(" ptp.idPerson_Role, ");
-        sql.append(" ptp.Tipo_Recurso, ");
-        sql.append(" pe.idPerson, ");
-        sql.append(" pe.FirstNames, ");
-        sql.append(" pe.FamilyNames ");
-
-        sql.append(" FROM project_team_pucp ptp ");
-        sql.append(" JOIN person pe ON ptp.idPerson = pe.idPerson ");
-        sql.append(" WHERE ptp.idProject = :idProject ");
-
-        Query query = entityManager.createNativeQuery(sql.toString());
-
-        query.setParameter("idProject", idProject);
-
-        List<Object[]> resultList = query.getResultList();
-
-        if(!CollectionUtils.isEmpty(resultList)){
-            for (Object[] item : resultList) {
-                ResearcherDto researcherDto = new ResearcherDto();
-
-                researcherDto.setIdRolePerson(item[0] != null ? item[0].toString() : null);
-                researcherDto.setRoleName(item[1] != null ? item[1].toString() : null);
-                researcherDto.setIdPerson(item[2] != null ? item[2].toString() : null);
-                researcherDto.setFirstNames(item[3] != null ? item[3].toString() : null);
-                researcherDto.setFamilyNames(item[4] != null ? item[4].toString() : null);
-
-                researchers.add(researcherDto);
-            }
-        }
-
-        return researchers;
-    }
-
     @Override
     public FundingListResponse getFundingRelatedList(FundingListRequest request) {
         validationUtils.validateKeyCode(request.getKeyCode());
@@ -345,6 +309,114 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
         response.setTotal((long) response.getResult().size());
 
         return response;
+    }
+
+    @Override
+    public ResearchGroupListResponse getResearchGroupList(ResearchGroupListRequest request) {
+        validationUtils.validateKeyCode(request.getKeyCode());
+        ResearchGroupListResponse response = new ResearchGroupListResponse();
+
+        StringBuilder sql = new StringBuilder();
+
+        sql.append(" SELECT ");
+        sql.append(" pa.idPerson_Role, ");
+        sql.append(" pa.Status, ");
+        sql.append(" org.idOrgUnit, ");
+        sql.append(" org.Name, ");
+        sql.append(" org.Acronym, ");
+        sql.append(" org.PartOf, ");
+        sql.append(" orggro.Status, ");
+        sql.append(" orggro.Category ");
+
+        sql.append(" FROM person_affiliation pa ");
+        sql.append(" JOIN orgunit org ON pa.idOrgUnit = org.idOrgUnit ");
+        sql.append(" JOIN orgunit_group orggro ON org.idOrgUnit = orggro.idOrgUnit ");
+        sql.append(" WHERE org.idOrgUnit_Type = \"GRUPO\" ");
+        sql.append(" AND pa.idPerson = :idPerson ");
+
+        Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter("idPerson", request.getIdPerson());
+
+        List<Object[]> resultList = query.getResultList();
+
+        if(!CollectionUtils.isEmpty(resultList)){
+            for (Object[] item : resultList) {
+                ResearchGroupDto researchGroupDto = new ResearchGroupDto();
+
+                researchGroupDto.setIdPersonRole(item[0] != null ? item[0].toString() : null);
+                researchGroupDto.setStatus(item[1] != null ? item[1].toString() : null);
+                researchGroupDto.setIdOrgUnit(item[2] != null ? item[2].toString() : null);
+                researchGroupDto.setName(item[3] != null ? item[3].toString() : null);
+                researchGroupDto.setAcronym(item[4] != null ? item[4].toString() : null);
+                researchGroupDto.setPartOf(item[5] != null ? item[5].toString() : null);
+                researchGroupDto.setStatusGroup(item[6] != null ? item[6].toString() : null);
+                researchGroupDto.setCategoryGroup(item[7] != null ? item[7].toString() : null);
+
+                researchGroupDto.setNamePartOf(orgunitRepository.findByIdOrgUnit(researchGroupDto.getPartOf()).getName());
+
+                response.getResult().add(researchGroupDto);
+            }
+        }
+        else{
+            response.setValues(ResultCodeEnum.NO_RESULTS.getCode(), ResultCodeEnum.NO_RESULTS.getMessage());
+        }
+
+        response.setTotal((long) response.getResult().size());
+
+        return response;
+    }
+
+    @Override
+    public ResearchGroupDetailResponse getResearchGroupDetail(ResearchGroupDetailRequest request) {
+        validationUtils.validateKeyCode(request.getKeyCode());
+        ResearchGroupDetailResponse response = new ResearchGroupDetailResponse();
+
+        StringBuilder sql = new StringBuilder();
+
+        sql.append(" SELECT ");
+        sql.append(" org.idOrgUnit, ");
+        sql.append(" org.Name, ");
+        sql.append(" org.Acronym, ");
+        sql.append(" org.PartOf, ");
+        sql.append(" orggro.Status, ");
+        sql.append(" orggro.Category ");
+
+        sql.append(" FROM orgunit org ");
+        sql.append(" JOIN orgunit_group orggro ON org.idOrgUnit = orggro.idOrgUnit ");
+        sql.append(" WHERE org.idOrgUnit = :idOrgUnit ");
+
+        Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter("idOrgUnit", request.getIdOrgUnit());
+
+        List<Object[]> resultList = query.getResultList();
+
+        if(!CollectionUtils.isEmpty(resultList)){
+            for (Object[] item : resultList) {
+                ResearchGroupDetailDto researchGroupDto = new ResearchGroupDetailDto();
+
+                researchGroupDto.setIdOrgUnit(item[0] != null ? item[0].toString() : null);
+                researchGroupDto.setName(item[1] != null ? item[1].toString() : null);
+                researchGroupDto.setAcronym(item[2] != null ? item[2].toString() : null);
+                researchGroupDto.setPartOf(item[3] != null ? item[3].toString() : null);
+                researchGroupDto.setStatusGroup(item[4] != null ? item[4].toString() : null);
+                researchGroupDto.setCategoryGroup(item[5] != null ? item[5].toString() : null);
+
+                researchGroupDto.setNamePartOf(orgunitRepository.findByIdOrgUnit(researchGroupDto.getPartOf()).getName());
+
+                researchGroupDto.setResearchersList(getResearchGroupTeam(researchGroupDto.getIdOrgUnit()));
+
+                // Publicaciones relacionadas
+                // Projectos relacionados
+
+                response.setResearchGroupDetail(researchGroupDto);
+            }
+        }
+        else{
+            response.setValues(ResultCodeEnum.NO_RESULTS.getCode(), ResultCodeEnum.NO_RESULTS.getMessage());
+        }
+
+        return response;
+
     }
 
     private List<FundingListDto> getFundingsOfProject(Long idProject){
@@ -430,4 +502,80 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
 
         return authors;
     }
+
+    private List<ResearcherDto> getProjectTeam(Long idProject) {
+        List<ResearcherDto> researchers = new ArrayList<>();
+        StringBuilder sql = new StringBuilder();
+
+        sql.append(" SELECT ");
+        sql.append(" ptp.idPerson_Role, ");
+        sql.append(" ptp.Tipo_Recurso, ");
+        sql.append(" pe.idPerson, ");
+        sql.append(" pe.FirstNames, ");
+        sql.append(" pe.FamilyNames ");
+
+        sql.append(" FROM project_team_pucp ptp ");
+        sql.append(" JOIN person pe ON ptp.idPerson = pe.idPerson ");
+        sql.append(" WHERE ptp.idProject = :idProject ");
+
+        Query query = entityManager.createNativeQuery(sql.toString());
+
+        query.setParameter("idProject", idProject);
+
+        List<Object[]> resultList = query.getResultList();
+
+        if(!CollectionUtils.isEmpty(resultList)){
+            for (Object[] item : resultList) {
+                ResearcherDto researcherDto = new ResearcherDto();
+
+                researcherDto.setIdRolePerson(item[0] != null ? item[0].toString() : null);
+                researcherDto.setRoleName(item[1] != null ? item[1].toString() : null);
+                researcherDto.setIdPerson(item[2] != null ? item[2].toString() : null);
+                researcherDto.setFirstNames(item[3] != null ? item[3].toString() : null);
+                researcherDto.setFamilyNames(item[4] != null ? item[4].toString() : null);
+
+                researchers.add(researcherDto);
+            }
+        }
+
+        return researchers;
+    }
+
+    private List<ResearcherDto> getResearchGroupTeam(String idOrgUnit) {
+        List<ResearcherDto> researchers = new ArrayList<>();
+        StringBuilder sql = new StringBuilder();
+
+        sql.append(" SELECT ");
+        sql.append(" pe.idPerson, ");
+        sql.append(" pe.FirstNames, ");
+        sql.append(" pe.FamilyNames, ");
+        sql.append(" pa.idPerson_Role ");
+
+        sql.append(" FROM person pe ");
+        sql.append(" JOIN person_affiliation pa ON pe.idPerson = pa.idPerson ");
+        sql.append(" WHERE pa.Status = \"ACTIVO\" ");
+        sql.append(" AND pa.idOrgUnit = :idOrgUnit ");
+
+        Query query = entityManager.createNativeQuery(sql.toString());
+
+        query.setParameter("idOrgUnit", idOrgUnit);
+
+        List<Object[]> resultList = query.getResultList();
+
+        if(!CollectionUtils.isEmpty(resultList)){
+            for (Object[] item : resultList) {
+                ResearcherDto researcherDto = new ResearcherDto();
+
+                researcherDto.setIdPerson(item[0] != null ? item[0].toString() : null);
+                researcherDto.setFirstNames(item[1] != null ? item[1].toString() : null);
+                researcherDto.setFamilyNames(item[2] != null ? item[2].toString() : null);
+                researcherDto.setIdRolePerson(item[3] != null ? item[3].toString() : null);
+
+                researchers.add(researcherDto);
+            }
+        }
+
+        return researchers;
+    }
+
 }
