@@ -33,7 +33,7 @@ public class PerformanceEvaluation {
 
     @GetMapping(value = "/projects")
     @Operation(summary = "Obtain projects by idPerson")
-    public ProjectAuthorListResponse getFundingRelatedList(@ModelAttribute ProjectAuthorListRequest request){
+    public ProjectAuthorListResponse getProjectAuthorList(@ModelAttribute ProjectAuthorListRequest request){
         return performanceEvaluationService.getProjectAuthorList(request);
     }
 

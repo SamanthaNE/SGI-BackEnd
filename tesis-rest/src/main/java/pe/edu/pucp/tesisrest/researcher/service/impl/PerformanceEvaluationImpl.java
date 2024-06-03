@@ -6,8 +6,10 @@ import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.CollectionUtils;
+import pe.edu.pucp.tesisrest.common.dto.*;
 import pe.edu.pucp.tesisrest.common.enums.ResultCodeEnum;
 import pe.edu.pucp.tesisrest.common.repository.OrgUnitRepository;
+import pe.edu.pucp.tesisrest.common.service.CommonService;
 import pe.edu.pucp.tesisrest.common.util.ValidationUtils;
 import pe.edu.pucp.tesisrest.researcher.dto.*;
 import pe.edu.pucp.tesisrest.researcher.dto.request.*;
@@ -23,11 +25,12 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
     private final ValidationUtils validationUtils;
     private final EntityManager entityManager;
     private final OrgUnitRepository orgunitRepository;
+    private final CommonService commonService;
 
     @Override
     public PublicationAuthorListResponse getPublicationAuthorList(PublicationAuthorListRequest request) {
         validationUtils.validateKeyCode(request.getKeyCode());
-        Map<String, Object> parameters = new HashMap<>();
+
         StringBuilder sql = new StringBuilder();
 
         sql.append(" SELECT ");
@@ -43,22 +46,16 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
         sql.append(" JOIN resource_type_coar rtc ON pu.idResource_Type_COAR = rtc.idResource_Type_COAR ");
         sql.append(" WHERE au.ScopusAuthorID = :scopusAuthorId ");
 
-        parameters.put("scopusAuthorId", request.getScopusAuthorId());
-
         Query query = entityManager.createNativeQuery(sql.toString());
-        Set<Map.Entry<String, Object>> entrySet = parameters.entrySet();
-        for (Map.Entry<String, Object> entry : entrySet) {
-            query.setParameter(entry.getKey(), entry.getValue());
-        }
+        query.setParameter("scopusAuthorId", request.getScopusAuthorId());
+        List<Object[]> resultList = query.getResultList();
 
         PublicationAuthorListResponse response = new PublicationAuthorListResponse();
         List<AuthorResearcherDto> authors;
 
-        List<Object[]> resultList = query.getResultList();
-
         if(!CollectionUtils.isEmpty(resultList)){
             for (Object[] item : resultList) {
-                PublicationAuthorDto pubAuthorDto = new PublicationAuthorDto();
+                PublicationDto pubAuthorDto = new PublicationDto();
 
                 pubAuthorDto.setPublicationId(item[0] != null ? Long.valueOf(item[0].toString()) : null);
                 pubAuthorDto.setTitle(item[1] != null ? item[1].toString() : null);
@@ -67,7 +64,7 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
                 pubAuthorDto.setIdResourceTypeCOAR(item[4] != null ? item[4].toString() : null);
                 pubAuthorDto.setResourceTypeCOARName(item[5] != null ? item[5].toString() : null);
 
-                authors = getAuthorsOfPublication(pubAuthorDto.getPublicationId());
+                authors = commonService.getAuthorsOfPublication(pubAuthorDto.getPublicationId());
 
                 pubAuthorDto.setAuthorsList(authors);
 
@@ -111,13 +108,13 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
 
         PublicationAuthorDetailResponse response = new PublicationAuthorDetailResponse();
         List<AuthorResearcherDto> authors;
-        List<ProjectAuthorDto> projects;
+        List<ProjectDto> projects;
 
         List<Object[]> resultList = query.getResultList();
 
         if(!CollectionUtils.isEmpty(resultList)){
             for (Object[] item : resultList) {
-                PublicationAuthorDetailDto pubAuthorDto = new PublicationAuthorDetailDto();
+                PublicationDetailDto pubAuthorDto = new PublicationDetailDto();
 
                 pubAuthorDto.setPublicationId(item[0] != null ? Long.valueOf(item[0].toString()) : null);
                 pubAuthorDto.setTitle(item[1] != null ? item[1].toString() : null);
@@ -130,10 +127,10 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
                 pubAuthorDto.setStartPage(item[8] != null ? item[8].toString() : null);
                 pubAuthorDto.setEndPage(item[9] != null ? item[9].toString() : null);
 
-                authors = getAuthorsOfPublication(pubAuthorDto.getPublicationId());
+                authors = commonService.getAuthorsOfPublication(pubAuthorDto.getPublicationId());
                 pubAuthorDto.setAuthorsList(authors);
 
-                projects = getProjectsRelatedToPublication(pubAuthorDto.getPublicationId());
+                projects = commonService.getProjectsRelatedToPublication(pubAuthorDto.getPublicationId());
                 pubAuthorDto.setRelatedProjects(projects);
 
                 response.setPublicationAuthorDetail(pubAuthorDto);
@@ -144,51 +141,6 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
         }
 
         return response;
-    }
-
-    private List<ProjectAuthorDto> getProjectsRelatedToPublication(Long publicationId) {
-        List<ProjectAuthorDto> projects = new ArrayList<>();
-        StringBuilder sql = new StringBuilder();
-
-        sql.append(" SELECT ");
-        sql.append(" pro.idProject, ");
-        sql.append(" pro.Title, ");
-        sql.append(" pro.Abstract, ");
-        sql.append(" pro.StartDate, ");
-        sql.append(" pro.EndDate, ");
-        sql.append(" pro.idProject_Status_Type_CONCYTEC ");
-
-        sql.append(" FROM project pro ");
-        sql.append(" JOIN publication_originatesfrom pof ON pro.idProject = pof.idProject ");
-        sql.append(" WHERE pof.idPublication = :idPublication ");
-
-        Query query = entityManager.createNativeQuery(sql.toString());
-
-        query.setParameter("idPublication", publicationId);
-
-        List<Object[]> resultList = query.getResultList();
-        List<FundingListDto> fundings;
-
-        if(!CollectionUtils.isEmpty(resultList)){
-            for (Object[] item : resultList) {
-                ProjectAuthorDto projectDto = new ProjectAuthorDto();
-
-                projectDto.setIdProject(item[0] != null ? Long.valueOf(item[0].toString()) : null);
-                projectDto.setTitle(item[1] != null ? item[1].toString() : null);
-                projectDto.setDescription(item[2] != null ? item[2].toString() : null);
-                projectDto.setStartDate(item[3] != null ? item[3].toString() : null);
-                projectDto.setEndDate(item[4] != null ? item[4].toString() : null);
-                projectDto.setIdProjectStatusTypeCONCYTEC(item[5] != null ? item[5].toString() : null);
-
-                fundings = getFundingsOfProject(projectDto.getIdProject());
-
-                projectDto.setRelatedFundingList(fundings);
-
-                projects.add(projectDto);
-            }
-        }
-
-        return projects;
     }
 
     @Override
@@ -220,16 +172,16 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
 
         if(!CollectionUtils.isEmpty(resultList)){
             for (Object[] item : resultList) {
-                ProjectAuthorDto proAuthorDto = new ProjectAuthorDto();
+                ProjectDto proAuthorDto = new ProjectDto();
 
                 proAuthorDto.setIdProject(item[0] != null ? Long.valueOf(item[0].toString()) : null);
                 proAuthorDto.setTitle(item[1] != null ? item[1].toString() : null);
                 proAuthorDto.setDescription(item[2] != null ? item[2].toString() : null);
-                proAuthorDto.setStartDate(item[3] != null ? item[3].toString() : null);
-                proAuthorDto.setEndDate(item[4] != null ? item[4].toString() : null);
+                proAuthorDto.setStartDate(item[3] != null ? (Date) item[3] : null);
+                proAuthorDto.setEndDate(item[4] != null ? (Date) item[4] : null);
                 proAuthorDto.setIdProjectStatusTypeCONCYTEC(item[5] != null ? item[5].toString() : null);
 
-                fundings = getFundingsOfProject(proAuthorDto.getIdProject());
+                fundings = commonService.getFundingsOfProject(proAuthorDto.getIdProject());
 
                 proAuthorDto.setRelatedFundingList(fundings);
 
@@ -271,19 +223,19 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
 
         try {
             Object[] result = (Object[]) query.getSingleResult();
-            ProjectAuthorDetailDto proDetailDto = new ProjectAuthorDetailDto();
+            ProjectDetailDto proDetailDto = new ProjectDetailDto();
 
             proDetailDto.setIdProject(result[0] != null ? Long.valueOf(result[0].toString()) : null);
             proDetailDto.setTitle(result[1] != null ? (String) result[1] : null);
             proDetailDto.setDescription(result[2] != null ? (String) result[2] : null);
-            proDetailDto.setStartDate(result[3] != null ? (String) result[3] : null);
-            proDetailDto.setEndDate(result[4] != null ? (String) result[4] : null);
+            proDetailDto.setStartDate(result[3] != null ? (Date) result[3] : null);
+            proDetailDto.setEndDate(result[4] != null ? (Date) result[4] : null);
             proDetailDto.setIdProjectStatusTypeCONCYTEC(result[5] != null ? (String) result[5] : null);
 
-            fundings = getFundingsOfProject(proDetailDto.getIdProject());
+            fundings = commonService.getFundingsOfProject(proDetailDto.getIdProject());
             proDetailDto.setRelatedFundingList(fundings);
 
-            researchers = getProjectTeam(proDetailDto.getIdProject());
+            researchers = commonService.getProjectTeam(proDetailDto.getIdProject());
             proDetailDto.setResearchers(researchers);
 
             response.setProjectAuthorDetail(proDetailDto);
@@ -299,8 +251,8 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
         validationUtils.validateKeyCode(request.getKeyCode());
         FundingListResponse response = new FundingListResponse();
 
-        if(!getFundingsOfProject(request.getIdProject()).isEmpty()){
-            response.setResult(getFundingsOfProject(request.getIdProject()));
+        if(!commonService.getFundingsOfProject(request.getIdProject()).isEmpty()){
+            response.setResult(commonService.getFundingsOfProject(request.getIdProject()));
         }
         else{
             response.setValues(ResultCodeEnum.NO_RESULTS.getCode(), ResultCodeEnum.NO_RESULTS.getMessage());
@@ -403,7 +355,7 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
 
                 researchGroupDto.setNamePartOf(orgunitRepository.findByIdOrgUnit(researchGroupDto.getPartOf()).getName());
 
-                researchGroupDto.setResearchersList(getResearchGroupTeam(researchGroupDto.getIdOrgUnit()));
+                researchGroupDto.setResearchersList(commonService.getResearchGroupTeam(researchGroupDto.getIdOrgUnit()));
 
                 // Publicaciones relacionadas
                 // Projectos relacionados
@@ -417,165 +369,6 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
 
         return response;
 
-    }
-
-    private List<FundingListDto> getFundingsOfProject(Long idProject){
-        List<FundingListDto> funding = new ArrayList<>();
-        StringBuilder sql = new StringBuilder();
-
-        sql.append(" SELECT ");
-        sql.append(" pf.idFunding, ");
-        sql.append(" pf.FundedAs, ");
-        sql.append(" pf.Categoria, ");
-        sql.append(" f.CurrCode, ");
-        sql.append(" f.Amount, ");
-        sql.append(" ft.Nombre, ");
-        sql.append(" org.OriginalName ");
-
-        sql.append(" FROM project_funded pf ");
-        sql.append(" JOIN funding f ON pf.idFunding = f.idFunding ");
-        sql.append(" JOIN funding_type ft ON f.idFunding_Type = ft.idFunding_Type ");
-        sql.append(" JOIN funder fu ON f.idFunding = fu.idFunding ");
-        sql.append(" JOIN orgunit org ON fu.idOrgUnit = org.idOrgUnit ");
-        sql.append(" WHERE pf.idProject = :idProject");
-
-        Query query = entityManager.createNativeQuery(sql.toString());
-
-        query.setParameter("idProject", idProject);
-
-        List<Object[]> resultList = query.getResultList();
-
-        if(!CollectionUtils.isEmpty(resultList)){
-            for (Object[] item : resultList) {
-                FundingListDto fundingListDto = new FundingListDto();
-
-                fundingListDto.setIdFunding(item[0] != null ? Long.valueOf(item[0].toString()) : null);
-                fundingListDto.setFundedAs(item[1] != null ? item[1].toString() : null);
-                fundingListDto.setCategory(item[2] != null ? item[2].toString() : null);
-                fundingListDto.setCurrCode(item[3] != null ? item[3].toString() : null);
-                fundingListDto.setAmount(item[4] != null ? Double.parseDouble(item[4].toString()) : null);
-                fundingListDto.setFundingType(item[5] != null ? item[5].toString() : null);
-                fundingListDto.setFundedBy(item[6] != null ? item[6].toString() : null);
-
-                funding.add(fundingListDto);
-            }
-        }
-
-        return funding;
-    }
-
-    private List<AuthorResearcherDto> getAuthorsOfPublication(Long publicationId){
-        StringBuilder sql = new StringBuilder();
-
-        List<AuthorResearcherDto> authors = new ArrayList<>();
-
-        sql.append(" SELECT ");
-        sql.append(" au.idPerson, ");
-        sql.append(" au.idOrgUnit, ");
-        sql.append(" au.Surname, ");
-        sql.append(" au.GivenName, ");
-        sql.append(" au.ScopusAuthorID ");
-
-        sql.append(" FROM publication pu ");
-        sql.append(" JOIN publication_author au ON pu.idPublication = au.idPublication ");
-        sql.append(" WHERE pu.idPublication = :publication_id");
-
-        Query query = entityManager.createNativeQuery(sql.toString());
-
-        query.setParameter("publication_id", publicationId);
-
-        List<Object[]> resultList = query.getResultList();
-
-        if(!CollectionUtils.isEmpty(resultList)){
-            for (Object[] item : resultList) {
-                AuthorResearcherDto authorDto = new AuthorResearcherDto();
-
-                authorDto.setIdPerson(item[0] != null ? item[0].toString() : null);
-                authorDto.setIdOrgUnit(item[1] != null ? item[1].toString() : null);
-                authorDto.setSurname(item[2] != null ? item[2].toString() : null);
-                authorDto.setGivenName(item[3] != null ? item[3].toString() : null);
-                authorDto.setGivenName(item[3] != null ? item[3].toString() : null);
-
-                authors.add(authorDto);
-            }
-        }
-
-        return authors;
-    }
-
-    private List<ResearcherDto> getProjectTeam(Long idProject) {
-        List<ResearcherDto> researchers = new ArrayList<>();
-        StringBuilder sql = new StringBuilder();
-
-        sql.append(" SELECT ");
-        sql.append(" ptp.idPerson_Role, ");
-        sql.append(" ptp.Tipo_Recurso, ");
-        sql.append(" pe.idPerson, ");
-        sql.append(" pe.FirstNames, ");
-        sql.append(" pe.FamilyNames ");
-
-        sql.append(" FROM project_team_pucp ptp ");
-        sql.append(" JOIN person pe ON ptp.idPerson = pe.idPerson ");
-        sql.append(" WHERE ptp.idProject = :idProject ");
-
-        Query query = entityManager.createNativeQuery(sql.toString());
-
-        query.setParameter("idProject", idProject);
-
-        List<Object[]> resultList = query.getResultList();
-
-        if(!CollectionUtils.isEmpty(resultList)){
-            for (Object[] item : resultList) {
-                ResearcherDto researcherDto = new ResearcherDto();
-
-                researcherDto.setIdRolePerson(item[0] != null ? item[0].toString() : null);
-                researcherDto.setRoleName(item[1] != null ? item[1].toString() : null);
-                researcherDto.setIdPerson(item[2] != null ? item[2].toString() : null);
-                researcherDto.setFirstNames(item[3] != null ? item[3].toString() : null);
-                researcherDto.setFamilyNames(item[4] != null ? item[4].toString() : null);
-
-                researchers.add(researcherDto);
-            }
-        }
-
-        return researchers;
-    }
-
-    private List<ResearcherDto> getResearchGroupTeam(String idOrgUnit) {
-        List<ResearcherDto> researchers = new ArrayList<>();
-        StringBuilder sql = new StringBuilder();
-
-        sql.append(" SELECT ");
-        sql.append(" pe.idPerson, ");
-        sql.append(" pe.FirstNames, ");
-        sql.append(" pe.FamilyNames, ");
-        sql.append(" pa.idPerson_Role ");
-
-        sql.append(" FROM person pe ");
-        sql.append(" JOIN person_affiliation pa ON pe.idPerson = pa.idPerson ");
-        sql.append(" WHERE pa.Status = \"ACTIVO\" ");
-        sql.append(" AND pa.idOrgUnit = :idOrgUnit ");
-
-        Query query = entityManager.createNativeQuery(sql.toString());
-
-        query.setParameter("idOrgUnit", idOrgUnit);
-
-        List<Object[]> resultList = query.getResultList();
-
-        if(!CollectionUtils.isEmpty(resultList)){
-            for (Object[] item : resultList) {
-                ResearcherDto researcherDto = new ResearcherDto();
-
-                researcherDto.setIdPerson(item[0] != null ? item[0].toString() : null);
-                researcherDto.setFirstNames(item[1] != null ? item[1].toString() : null);
-                researcherDto.setFamilyNames(item[2] != null ? item[2].toString() : null);
-                researcherDto.setIdRolePerson(item[3] != null ? item[3].toString() : null);
-
-                researchers.add(researcherDto);
-            }
-        }
-
-        return researchers;
     }
 
 }

@@ -16,8 +16,6 @@ import pe.edu.pucp.tesisrest.common.model.person.UserAuth;
 import pe.edu.pucp.tesisrest.common.repository.UserAuthRepository;
 import pe.edu.pucp.tesisrest.common.service.UserService;
 import pe.edu.pucp.tesisrest.common.util.ValidationUtils;
-import pe.edu.pucp.tesisrest.researcher.dto.ProjectAuthorDetailDto;
-import pe.edu.pucp.tesisrest.researcher.dto.ResearcherDto;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

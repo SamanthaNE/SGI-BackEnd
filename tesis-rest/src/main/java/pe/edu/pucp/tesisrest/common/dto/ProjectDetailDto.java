@@ -1,4 +1,4 @@
-package pe.edu.pucp.tesisrest.researcher.dto;
+package pe.edu.pucp.tesisrest.common.dto;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -8,7 +8,7 @@ import java.util.List;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class ProjectAuthorDetailDto extends ProjectAuthorDto{
+public class ProjectDetailDto extends ProjectDto{
     private List<ResearcherDto> researchers = new ArrayList<>();
     // Categoria / puntaje / grupos
 }

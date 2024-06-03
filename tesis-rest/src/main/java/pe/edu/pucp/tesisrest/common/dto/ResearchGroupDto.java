@@ -1,4 +1,4 @@
-package pe.edu.pucp.tesisrest.researcher.dto;
+package pe.edu.pucp.tesisrest.common.dto;
 
 import lombok.Data;
 

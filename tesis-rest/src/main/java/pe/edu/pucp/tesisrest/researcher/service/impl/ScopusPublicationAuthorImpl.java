@@ -5,7 +5,7 @@ import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.CollectionUtils;
-import pe.edu.pucp.tesisrest.researcher.dto.ResearchGroupDto;
+import pe.edu.pucp.tesisrest.common.dto.ResearchGroupDto;
 import pe.edu.pucp.tesisrest.researcher.dto.ScopusAuthorDto;
 import pe.edu.pucp.tesisrest.researcher.dto.ScopusPublicationAuthorDto;
 import pe.edu.pucp.tesisrest.researcher.dto.request.ResearchGroupListRequest;

@@ -1,17 +1,18 @@
-package pe.edu.pucp.tesisrest.researcher.dto;
+package pe.edu.pucp.tesisrest.common.dto;
 
 import lombok.Data;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Data
-public class ProjectAuthorDto {
+public class ProjectDto {
     private Long idProject;
     private String title;
     private String description;
-    private String StartDate;
-    private String EndDate;
+    private Date StartDate;
+    private Date EndDate;
     private String idProjectStatusTypeCONCYTEC;
     private List<FundingListDto> relatedFundingList = new ArrayList<>();
 }
