@@ -9,7 +9,6 @@ import pe.edu.pucp.tesisrest.common.dto.FundingListDto;
 import pe.edu.pucp.tesisrest.common.dto.ProjectDto;
 import pe.edu.pucp.tesisrest.common.dto.ResearcherDto;
 import pe.edu.pucp.tesisrest.common.service.CommonService;
-import pe.edu.pucp.tesisrest.common.util.ValidationUtils;
 import pe.edu.pucp.tesisrest.researcher.dto.AuthorResearcherDto;
 
 import java.util.ArrayList;
@@ -33,6 +32,7 @@ public class CommonImpl implements CommonService {
         sql.append(" pf.Categoria, ");
         sql.append(" f.CurrCode, ");
         sql.append(" f.Amount, ");
+        sql.append(" f.Identifier, ");
         sql.append(" ft.Nombre, ");
         sql.append(" org.OriginalName ");
 
@@ -58,8 +58,9 @@ public class CommonImpl implements CommonService {
                 fundingListDto.setCategory(item[2] != null ? item[2].toString() : null);
                 fundingListDto.setCurrCode(item[3] != null ? item[3].toString() : null);
                 fundingListDto.setAmount(item[4] != null ? Double.parseDouble(item[4].toString()) : null);
-                fundingListDto.setFundingType(item[5] != null ? item[5].toString() : null);
-                fundingListDto.setFundedBy(item[6] != null ? item[6].toString() : null);
+                fundingListDto.setIdentifier(item[5] != null ? item[5].toString() : null);
+                fundingListDto.setFundingType(item[6] != null ? item[6].toString() : null);
+                fundingListDto.setFundedBy(item[7] != null ? item[7].toString() : null);
 
                 funding.add(fundingListDto);
             }

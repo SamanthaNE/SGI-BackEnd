@@ -102,8 +102,9 @@ public class UserImpl implements UserService {
                     sql.append(" FROM person pe ");
                     sql.append(" JOIN person_affiliation pa ON pe.idPerson = pa.idPerson ");
                     sql.append(" JOIN person_role pr ON pa.idPerson_Role = pr.idPerson_Role ");
-                    sql.append(" WHERE pr.idPerson_Role = \"INVESTIGADOR\" ");
-                    sql.append(" AND pe.idPerson = :idPerson");
+                    sql.append(" WHERE pe.idPerson = :idPerson");
+                    //sql.append(" WHERE pr.idPerson_Role = \"INVESTIGADOR\" ");
+
 
                     Query query = entityManager.createNativeQuery(sql.toString());
                     query.setParameter("idPerson", userAuth.getIdPerson());

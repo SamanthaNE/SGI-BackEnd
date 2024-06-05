@@ -10,7 +10,7 @@ import java.util.List;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class ResearchGroupListResponse extends Response {
+public class ResearchGroupAuthorListResponse extends Response {
     private List<ResearchGroupDto> result = new ArrayList<>();
     private Long total = 0L;
 }

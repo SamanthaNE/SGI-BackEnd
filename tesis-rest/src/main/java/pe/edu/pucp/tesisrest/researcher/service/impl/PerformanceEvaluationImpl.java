@@ -16,6 +16,7 @@ import pe.edu.pucp.tesisrest.researcher.dto.request.*;
 import pe.edu.pucp.tesisrest.researcher.dto.response.*;
 import pe.edu.pucp.tesisrest.researcher.service.PerformanceEvaluationService;
 
+import java.time.LocalDate;
 import java.util.*;
 
 @Repository
@@ -45,6 +46,7 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
         sql.append(" JOIN publication_author au ON pu.idPublication = au.idPublication ");
         sql.append(" JOIN resource_type_coar rtc ON pu.idResource_Type_COAR = rtc.idResource_Type_COAR ");
         sql.append(" WHERE au.ScopusAuthorID = :scopusAuthorId ");
+        sql.append(" ORDER BY pu.PublicationDate DESC ");
 
         Query query = entityManager.createNativeQuery(sql.toString());
         query.setParameter("scopusAuthorId", request.getScopusAuthorId());
@@ -60,7 +62,14 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
                 pubAuthorDto.setPublicationId(item[0] != null ? Long.valueOf(item[0].toString()) : null);
                 pubAuthorDto.setTitle(item[1] != null ? item[1].toString() : null);
                 pubAuthorDto.setPublishedIn(item[2] != null ? item[2].toString() : null);
-                pubAuthorDto.setPublicationDate(item[3] != null ? item[3].toString() : null);
+
+                if (item[3] != null) {
+                    LocalDate publicationDate = LocalDate.parse(item[3].toString());
+                    pubAuthorDto.setPublicationDate(publicationDate);
+                } else {
+                    pubAuthorDto.setPublicationDate(null);
+                }
+                //pubAuthorDto.setPublicationDate(item[3] != null ? (Date) item[3] : null);
                 pubAuthorDto.setIdResourceTypeCOAR(item[4] != null ? item[4].toString() : null);
                 pubAuthorDto.setResourceTypeCOARName(item[5] != null ? item[5].toString() : null);
 
@@ -119,7 +128,15 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
                 pubAuthorDto.setPublicationId(item[0] != null ? Long.valueOf(item[0].toString()) : null);
                 pubAuthorDto.setTitle(item[1] != null ? item[1].toString() : null);
                 pubAuthorDto.setPublishedIn(item[2] != null ? item[2].toString() : null);
-                pubAuthorDto.setPublicationDate(item[3] != null ? item[3].toString() : null);
+
+                if (item[3] != null) {
+                    LocalDate publicationDate = LocalDate.parse(item[3].toString());
+                    pubAuthorDto.setPublicationDate(publicationDate);
+                } else {
+                    pubAuthorDto.setPublicationDate(null);
+                }
+
+                //pubAuthorDto.setPublicationDate(item[3] != null ? (Date) item[3] : null);
                 pubAuthorDto.setIdResourceTypeCOAR(item[4] != null ? item[4].toString() : null);
                 pubAuthorDto.setResourceTypeCOARName(item[5] != null ? item[5].toString() : null);
                 pubAuthorDto.setAbstractPublication(item[6] != null ? item[6].toString() : null);
@@ -179,6 +196,32 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
                 proAuthorDto.setDescription(item[2] != null ? item[2].toString() : null);
                 proAuthorDto.setStartDate(item[3] != null ? (Date) item[3] : null);
                 proAuthorDto.setEndDate(item[4] != null ? (Date) item[4] : null);
+
+                if(item[5] != null){
+                    System.out.println("CONCYTEC :" + item[5].toString());
+                    if (Objects.equals(item[5].toString(), "POR_INICIAR")) {
+                        proAuthorDto.setIdProjectStatusTypeCONCYTEC("Por uniciar");
+                    } else {
+                        if (Objects.equals(item[5].toString(), "EN_EJECUCION")) {
+                            proAuthorDto.setIdProjectStatusTypeCONCYTEC("En ejecución");
+                        } else {
+                            if (Objects.equals(item[5].toString(), "EN_PROCESO_CIERRRE")) {
+                                proAuthorDto.setIdProjectStatusTypeCONCYTEC("En proceso de cierre");
+                            } else {
+                                if (Objects.equals(item[5].toString(), "CERRADO")) {
+                                    proAuthorDto.setIdProjectStatusTypeCONCYTEC("Cerrado");
+                                } else {
+                                    if (Objects.equals(item[5].toString(), "CANCELADO")) {
+                                        proAuthorDto.setIdProjectStatusTypeCONCYTEC("Cancelado");
+                                    } else {
+                                        proAuthorDto.setIdProjectStatusTypeCONCYTEC(item[5].toString());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 proAuthorDto.setIdProjectStatusTypeCONCYTEC(item[5] != null ? item[5].toString() : null);
 
                 fundings = commonService.getFundingsOfProject(proAuthorDto.getIdProject());
@@ -264,9 +307,9 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
     }
 
     @Override
-    public ResearchGroupListResponse getResearchGroupList(ResearchGroupListRequest request) {
+    public ResearchGroupAuthorListResponse getResearchGroupListOfResearcher(ResearchGroupAuthorListRequest request) {
         validationUtils.validateKeyCode(request.getKeyCode());
-        ResearchGroupListResponse response = new ResearchGroupListResponse();
+        ResearchGroupAuthorListResponse response = new ResearchGroupAuthorListResponse();
 
         StringBuilder sql = new StringBuilder();
 
@@ -319,9 +362,9 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
     }
 
     @Override
-    public ResearchGroupDetailResponse getResearchGroupDetail(ResearchGroupDetailRequest request) {
+    public ResearchGroupAuthorDetailResponse getResearchGroupDetailOfResearcher(ResearchGroupAuthorDetailRequest request) {
         validationUtils.validateKeyCode(request.getKeyCode());
-        ResearchGroupDetailResponse response = new ResearchGroupDetailResponse();
+        ResearchGroupAuthorDetailResponse response = new ResearchGroupAuthorDetailResponse();
 
         StringBuilder sql = new StringBuilder();
 
@@ -368,7 +411,6 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
         }
 
         return response;
-
     }
 
 }

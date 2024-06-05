@@ -8,10 +8,10 @@ import org.springframework.util.CollectionUtils;
 import pe.edu.pucp.tesisrest.common.dto.ResearchGroupDto;
 import pe.edu.pucp.tesisrest.researcher.dto.ScopusAuthorDto;
 import pe.edu.pucp.tesisrest.researcher.dto.ScopusPublicationAuthorDto;
-import pe.edu.pucp.tesisrest.researcher.dto.request.ResearchGroupListRequest;
+import pe.edu.pucp.tesisrest.researcher.dto.request.ResearchGroupAuthorListRequest;
 import pe.edu.pucp.tesisrest.researcher.dto.request.ScopusPublicationAuthorListRequest;
 import pe.edu.pucp.tesisrest.researcher.dto.request.ScopusPublicationRequest;
-import pe.edu.pucp.tesisrest.researcher.dto.response.ResearchGroupListResponse;
+import pe.edu.pucp.tesisrest.researcher.dto.response.ResearchGroupAuthorListResponse;
 import pe.edu.pucp.tesisrest.researcher.dto.response.ScopusPublicationAuthorListResponse;
 import pe.edu.pucp.tesisrest.researcher.dto.response.ScopusPublicationResponse;
 import pe.edu.pucp.tesisrest.common.enums.ResultCodeEnum;
@@ -53,7 +53,7 @@ public class ScopusPublicationAuthorImpl implements ScopusPublicationAuthorServi
             sql.append(" FROM scopus_publication sp ");
             sql.append(" JOIN scopus_author_publication sap ON sp.scopus_publication_id = sap.scopus_publication_id ");
             sql.append(" WHERE sap.scopus_author_id = :author_id ");
-            sql.append(" ORDER BY sp.cover_date ");
+            sql.append(" ORDER BY sp.cover_date DESC");
 
             parameters.put("author_id", author.getScopusAuthorId());
         } else {
@@ -197,7 +197,7 @@ public class ScopusPublicationAuthorImpl implements ScopusPublicationAuthorServi
     }
 
     @Override
-    public ResearchGroupListResponse searchResearchGroupOfAuthor(ResearchGroupListRequest request) {
+    public ResearchGroupAuthorListResponse searchResearchGroupOfAuthor(ResearchGroupAuthorListRequest request) {
         validationUtils.validateKeyCode(request.getKeyCode());
         Map<String, Object> parameters = new HashMap<>();
         StringBuilder sql = new StringBuilder();
@@ -222,7 +222,7 @@ public class ScopusPublicationAuthorImpl implements ScopusPublicationAuthorServi
 
         parameters.put("idPerson", request.getIdPerson());
 
-        ResearchGroupListResponse response = new ResearchGroupListResponse();
+        ResearchGroupAuthorListResponse response = new ResearchGroupAuthorListResponse();
 
         Query query = entityManager.createNativeQuery(sql.toString());
         Set<Map.Entry<String, Object>> entrySet = parameters.entrySet();

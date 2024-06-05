@@ -4,10 +4,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
-import pe.edu.pucp.tesisrest.researcher.dto.request.ResearchGroupListRequest;
+import pe.edu.pucp.tesisrest.researcher.dto.request.ResearchGroupAuthorListRequest;
 import pe.edu.pucp.tesisrest.researcher.dto.request.ScopusPublicationAuthorListRequest;
 import pe.edu.pucp.tesisrest.researcher.dto.request.ScopusPublicationRequest;
-import pe.edu.pucp.tesisrest.researcher.dto.response.ResearchGroupListResponse;
+import pe.edu.pucp.tesisrest.researcher.dto.response.ResearchGroupAuthorListResponse;
 import pe.edu.pucp.tesisrest.researcher.dto.response.ScopusPublicationAuthorListResponse;
 import pe.edu.pucp.tesisrest.researcher.dto.response.ScopusPublicationResponse;
 import pe.edu.pucp.tesisrest.researcher.service.ScopusPublicationAuthorService;
@@ -34,7 +34,7 @@ public class ScopusPublicationCuration {
 
     @GetMapping(value = "/researchgroupsauthor")
     @Operation(summary = "Search research groups of an author by idperson")
-    public ResearchGroupListResponse searchResearchGroupOfAuthor(@ModelAttribute ResearchGroupListRequest request){
+    public ResearchGroupAuthorListResponse searchResearchGroupOfAuthor(@ModelAttribute ResearchGroupAuthorListRequest request){
         return scopusPublicationAuthorService.searchResearchGroupOfAuthor(request);
     }
 }

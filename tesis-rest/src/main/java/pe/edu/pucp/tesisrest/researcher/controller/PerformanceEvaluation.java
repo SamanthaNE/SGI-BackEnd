@@ -51,13 +51,13 @@ public class PerformanceEvaluation {
 
     @GetMapping(value = "/researchgroups")
     @Operation(summary = "Obtain research groups by idPerson")
-    public ResearchGroupListResponse getResearchGroupList(@ModelAttribute ResearchGroupListRequest request){
-        return performanceEvaluationService.getResearchGroupList(request);
+    public ResearchGroupAuthorListResponse getResearchGroupListOfResearcher(@ModelAttribute ResearchGroupAuthorListRequest request){
+        return performanceEvaluationService.getResearchGroupListOfResearcher(request);
     }
 
     @GetMapping(value = "/researchgroupdetail")
     @Operation(summary = "Obtain detail of a research group by idOrgUnit")
-    public ResearchGroupDetailResponse getResearchGroupDetail(@ModelAttribute ResearchGroupDetailRequest request){
-        return performanceEvaluationService.getResearchGroupDetail(request);
+    public ResearchGroupAuthorDetailResponse getResearchGroupDetailOfResearcher(@ModelAttribute ResearchGroupAuthorDetailRequest request){
+        return performanceEvaluationService.getResearchGroupDetailOfResearcher(request);
     }
 }

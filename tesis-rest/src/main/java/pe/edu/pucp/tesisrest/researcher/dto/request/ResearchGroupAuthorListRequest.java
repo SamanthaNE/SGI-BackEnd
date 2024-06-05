@@ -6,6 +6,6 @@ import pe.edu.pucp.tesisrest.common.dto.base.Request;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class ResearchGroupDetailRequest extends Request {
-    private String idOrgUnit;
+public class ResearchGroupAuthorListRequest extends Request {
+    private String idPerson;
 }
