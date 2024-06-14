@@ -15,7 +15,7 @@ import pe.edu.pucp.tesisrest.researcher.service.PerformanceEvaluationService;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping(value = "/api/evaluation")
-public class PerformanceEvaluation {
+public class PerformanceEvaluationController {
 
     private final PerformanceEvaluationService performanceEvaluationService;
 
@@ -43,10 +43,16 @@ public class PerformanceEvaluation {
         return performanceEvaluationService.getProjectDetailById(request);
     }
 
-    @GetMapping(value = "/relatedFunding")
+    @GetMapping(value = "/relatedProjectFunding")
     @Operation(summary = "Obtain the financing related to a project by idproject")
     public FundingListResponse getFundingRelatedList(@ModelAttribute FundingListRequest request){
         return performanceEvaluationService.getFundingRelatedList(request);
+    }
+
+    @GetMapping(value = "/funding")
+    @Operation(summary = "Obtain financing where the user is involved by idPerson")
+    public FundingListResponse getFundingRelatedDetailByPersonId(@ModelAttribute FundingListRequest request){
+        return performanceEvaluationService.getFundingRelatedDetailByPersonId(request);
     }
 
     @GetMapping(value = "/researchgroups")

@@ -8,4 +8,5 @@ import pe.edu.pucp.tesisrest.common.dto.base.Request;
 @Data
 public class FundingListRequest extends Request {
     private Long idProject;
+    private String idPerson;
 }

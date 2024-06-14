@@ -13,7 +13,7 @@ public class PublicationDto {
     private Long publicationId;
     private String title;
     private String publishedIn;
-    private LocalDate publicationDate;
+    private Date publicationDate;
     private String idResourceTypeCOAR;
     private String resourceTypeCOARName;
     private List<AuthorResearcherDto> authorsList = new ArrayList<>();

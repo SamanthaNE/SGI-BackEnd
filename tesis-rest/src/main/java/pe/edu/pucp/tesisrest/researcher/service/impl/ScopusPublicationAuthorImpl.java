@@ -53,6 +53,7 @@ public class ScopusPublicationAuthorImpl implements ScopusPublicationAuthorServi
             sql.append(" FROM scopus_publication sp ");
             sql.append(" JOIN scopus_author_publication sap ON sp.scopus_publication_id = sap.scopus_publication_id ");
             sql.append(" WHERE sap.scopus_author_id = :author_id ");
+            sql.append(" AND sap.estado = 1");
             sql.append(" ORDER BY sp.cover_date DESC");
 
             parameters.put("author_id", author.getScopusAuthorId());

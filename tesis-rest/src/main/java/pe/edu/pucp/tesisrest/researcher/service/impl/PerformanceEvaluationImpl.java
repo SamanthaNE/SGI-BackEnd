@@ -16,7 +16,6 @@ import pe.edu.pucp.tesisrest.researcher.dto.request.*;
 import pe.edu.pucp.tesisrest.researcher.dto.response.*;
 import pe.edu.pucp.tesisrest.researcher.service.PerformanceEvaluationService;
 
-import java.time.LocalDate;
 import java.util.*;
 
 @Repository
@@ -62,13 +61,16 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
                 pubAuthorDto.setPublicationId(item[0] != null ? Long.valueOf(item[0].toString()) : null);
                 pubAuthorDto.setTitle(item[1] != null ? item[1].toString() : null);
                 pubAuthorDto.setPublishedIn(item[2] != null ? item[2].toString() : null);
+                pubAuthorDto.setPublicationDate(item[3] != null ? (Date) item[3] : null);
 
+                /*
                 if (item[3] != null) {
                     LocalDate publicationDate = LocalDate.parse(item[3].toString());
                     pubAuthorDto.setPublicationDate(publicationDate);
                 } else {
                     pubAuthorDto.setPublicationDate(null);
                 }
+                 */
                 //pubAuthorDto.setPublicationDate(item[3] != null ? (Date) item[3] : null);
                 pubAuthorDto.setIdResourceTypeCOAR(item[4] != null ? item[4].toString() : null);
                 pubAuthorDto.setResourceTypeCOARName(item[5] != null ? item[5].toString() : null);
@@ -128,14 +130,16 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
                 pubAuthorDto.setPublicationId(item[0] != null ? Long.valueOf(item[0].toString()) : null);
                 pubAuthorDto.setTitle(item[1] != null ? item[1].toString() : null);
                 pubAuthorDto.setPublishedIn(item[2] != null ? item[2].toString() : null);
+                pubAuthorDto.setPublicationDate(item[3] != null ? (Date) item[3] : null);
 
+                /*
                 if (item[3] != null) {
                     LocalDate publicationDate = LocalDate.parse(item[3].toString());
                     pubAuthorDto.setPublicationDate(publicationDate);
                 } else {
                     pubAuthorDto.setPublicationDate(null);
                 }
-
+                */
                 //pubAuthorDto.setPublicationDate(item[3] != null ? (Date) item[3] : null);
                 pubAuthorDto.setIdResourceTypeCOAR(item[4] != null ? item[4].toString() : null);
                 pubAuthorDto.setResourceTypeCOARName(item[5] != null ? item[5].toString() : null);
@@ -177,6 +181,7 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
         sql.append(" JOIN project_team_pucp ptp ON ptp.idProject = pro.idProject ");
         sql.append(" JOIN person pe ON ptp.idPerson = pe.idPerson ");
         sql.append(" WHERE pe.idPerson = :idPerson ");
+        sql.append(" ORDER BY pro.StartDate DESC");
 
         Query query = entityManager.createNativeQuery(sql.toString());
 
@@ -197,10 +202,34 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
                 proAuthorDto.setStartDate(item[3] != null ? (Date) item[3] : null);
                 proAuthorDto.setEndDate(item[4] != null ? (Date) item[4] : null);
 
+                if (item[5] != null) {
+                    System.out.println("CONCYTEC :" + item[5]);
+                    switch (item[5].toString()) {
+                        case "POR_INICIAR":
+                            proAuthorDto.setIdProjectStatusTypeCONCYTEC("Por iniciar");
+                            break;
+                        case "EN_EJECUCION":
+                            proAuthorDto.setIdProjectStatusTypeCONCYTEC("En ejecución");
+                            break;
+                        case "EN_PROCESO_CIERRRE":
+                            proAuthorDto.setIdProjectStatusTypeCONCYTEC("En proceso de cierre");
+                            break;
+                        case "CERRADO":
+                            proAuthorDto.setIdProjectStatusTypeCONCYTEC("Cerrado");
+                            break;
+                        case "CANCELADO":
+                            proAuthorDto.setIdProjectStatusTypeCONCYTEC("Cancelado");
+                            break;
+                        default:
+                            proAuthorDto.setIdProjectStatusTypeCONCYTEC(item[5].toString());
+                            break;
+                    }
+                }
+/*
                 if(item[5] != null){
-                    System.out.println("CONCYTEC :" + item[5].toString());
+                    System.out.println("CONCYTEC :" + item[5]);
                     if (Objects.equals(item[5].toString(), "POR_INICIAR")) {
-                        proAuthorDto.setIdProjectStatusTypeCONCYTEC("Por uniciar");
+                        proAuthorDto.setIdProjectStatusTypeCONCYTEC("Por iniciar");
                     } else {
                         if (Objects.equals(item[5].toString(), "EN_EJECUCION")) {
                             proAuthorDto.setIdProjectStatusTypeCONCYTEC("En ejecución");
@@ -221,6 +250,7 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
                         }
                     }
                 }
+                */
 
                 proAuthorDto.setIdProjectStatusTypeCONCYTEC(item[5] != null ? item[5].toString() : null);
 
@@ -298,6 +328,63 @@ public class PerformanceEvaluationImpl implements PerformanceEvaluationService {
             response.setResult(commonService.getFundingsOfProject(request.getIdProject()));
         }
         else{
+            response.setValues(ResultCodeEnum.NO_RESULTS.getCode(), ResultCodeEnum.NO_RESULTS.getMessage());
+        }
+
+        response.setTotal((long) response.getResult().size());
+
+        return response;
+    }
+
+    @Override
+    public FundingListResponse getFundingRelatedDetailByPersonId(FundingListRequest request) {
+        validationUtils.validateKeyCode(request.getKeyCode());
+        FundingListResponse response = new FundingListResponse();
+
+        StringBuilder sql = new StringBuilder();
+
+        sql.append(" SELECT ");
+        sql.append(" pf.idFunding, ");
+        sql.append(" pf.FundedAs, ");
+        sql.append(" pf.Categoria, ");
+        sql.append(" f.CurrCode, ");
+        sql.append(" f.Amount, ");
+        sql.append(" f.Identifier, ");
+        sql.append(" ft.Nombre, ");
+        sql.append(" org.OriginalName ");
+
+        sql.append(" FROM project_funded pf ");
+        sql.append(" JOIN funding f ON pf.idFunding = f.idFunding ");
+        sql.append(" JOIN funding_type ft ON f.idFunding_Type = ft.idFunding_Type ");
+        sql.append(" JOIN funder fu ON f.idFunding = fu.idFunding ");
+        sql.append(" JOIN orgunit org ON fu.idOrgUnit = org.idOrgUnit ");
+        sql.append(" JOIN project_team_pucp ptp ON ptp.idProject = pf.idProject ");
+        sql.append(" JOIN person pe ON ptp.idPerson = pe.idPerson ");
+        sql.append(" WHERE pe.idPerson = :idPerson");
+
+        Query query = entityManager.createNativeQuery(sql.toString());
+
+        query.setParameter("idPerson", request.getIdPerson());
+
+        List<Object[]> resultList = query.getResultList();
+
+        if(!CollectionUtils.isEmpty(resultList)){
+            for (Object[] item : resultList) {
+                FundingListDto fundingListDto = new FundingListDto();
+
+                fundingListDto.setIdFunding(item[0] != null ? Long.valueOf(item[0].toString()) : null);
+                fundingListDto.setFundedAs(item[1] != null ? item[1].toString() : null);
+                fundingListDto.setCategory(item[2] != null ? item[2].toString() : null);
+                fundingListDto.setCurrCode(item[3] != null ? item[3].toString() : null);
+                fundingListDto.setAmount(item[4] != null ? Double.parseDouble(item[4].toString()) : null);
+                fundingListDto.setIdentifier(item[5] != null ? item[5].toString() : null);
+                fundingListDto.setFundingType(item[6] != null ? item[6].toString() : null);
+                fundingListDto.setFundedBy(item[7] != null ? item[7].toString() : null);
+
+                response.getResult().add(fundingListDto);
+            }
+        }
+        else {
             response.setValues(ResultCodeEnum.NO_RESULTS.getCode(), ResultCodeEnum.NO_RESULTS.getMessage());
         }
 

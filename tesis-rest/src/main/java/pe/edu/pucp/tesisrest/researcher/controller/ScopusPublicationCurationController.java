@@ -4,21 +4,19 @@ import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
-import pe.edu.pucp.tesisrest.researcher.dto.request.ResearchGroupAuthorListRequest;
-import pe.edu.pucp.tesisrest.researcher.dto.request.ScopusPublicationAuthorListRequest;
-import pe.edu.pucp.tesisrest.researcher.dto.request.ScopusPublicationRequest;
-import pe.edu.pucp.tesisrest.researcher.dto.response.ResearchGroupAuthorListResponse;
-import pe.edu.pucp.tesisrest.researcher.dto.response.ScopusPublicationAuthorListResponse;
-import pe.edu.pucp.tesisrest.researcher.dto.response.ScopusPublicationResponse;
+import pe.edu.pucp.tesisrest.researcher.dto.request.*;
+import pe.edu.pucp.tesisrest.researcher.dto.response.*;
 import pe.edu.pucp.tesisrest.researcher.service.ScopusPublicationAuthorService;
+import pe.edu.pucp.tesisrest.researcher.service.ScopusPublicationCurationService;
 
 @Slf4j
 @RequiredArgsConstructor
 @RestController
 @RequestMapping(value = "/api/scopus")
-public class ScopusPublicationCuration {
+public class ScopusPublicationCurationController {
 
     private final ScopusPublicationAuthorService scopusPublicationAuthorService;
+    private final ScopusPublicationCurationService scopusPublicationCurationService;
 
     @GetMapping(value = "/publicationsauthor")
     @Operation(summary = "Search scopus publications by scopus_author_id")
@@ -36,5 +34,17 @@ public class ScopusPublicationCuration {
     @Operation(summary = "Search research groups of an author by idperson")
     public ResearchGroupAuthorListResponse searchResearchGroupOfAuthor(@ModelAttribute ResearchGroupAuthorListRequest request){
         return scopusPublicationAuthorService.searchResearchGroupOfAuthor(request);
+    }
+
+    @PostMapping(value = "/newproject")
+    @Operation(summary = "Register a new project (with its funding) related to a publication")
+    public NewProjectWithFundingResponse register(@RequestBody NewProjectWithFundingRequest request) {
+        return scopusPublicationCurationService.createNewProjectWithFunding(request);
+    }
+
+    @PostMapping(value = "/newpublication")
+    @Operation(summary = "Register a new publication related to its scopus publication")
+    public NewPublicationOfSPCurationResponse register(@RequestBody NewPublicationOfSPCurationRequest request) {
+        return scopusPublicationCurationService.createNewPublicationOfSPCuration(request);
     }
 }

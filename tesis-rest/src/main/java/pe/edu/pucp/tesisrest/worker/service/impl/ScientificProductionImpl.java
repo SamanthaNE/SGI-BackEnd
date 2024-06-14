@@ -73,14 +73,15 @@ public class ScientificProductionImpl implements ScientificProductionService {
                 publicationDto.setPublicationId(item[0] != null ? Long.valueOf(item[0].toString()) : null);
                 publicationDto.setTitle(item[1] != null ? item[1].toString() : null);
                 publicationDto.setPublishedIn(item[2] != null ? item[2].toString() : null);
-
+                publicationDto.setPublicationDate(item[3] != null ? (Date) item[3] : null);
+                /*
                 if (item[3] != null) {
                     LocalDate publicationDate = LocalDate.parse(item[3].toString());
                     publicationDto.setPublicationDate(publicationDate);
                 } else {
                     publicationDto.setPublicationDate(null);
                 }
-
+                */
                 //publicationDto.setPublicationDate(item[3] != null ? (Date) item[3] : null);
                 publicationDto.setIdResourceTypeCOAR(item[4] != null ? item[4].toString() : null);
                 publicationDto.setResourceTypeCOARName(item[5] != null ? item[5].toString() : null);
@@ -141,14 +142,15 @@ public class ScientificProductionImpl implements ScientificProductionService {
                 publicationDto.setPublicationId(item[0] != null ? Long.valueOf(item[0].toString()) : null);
                 publicationDto.setTitle(item[1] != null ? item[1].toString() : null);
                 publicationDto.setPublishedIn(item[2] != null ? item[2].toString() : null);
-
+                publicationDto.setPublicationDate(item[3] != null ? (Date) item[3] : null);
+                /*
                 if (item[3] != null) {
                     LocalDate publicationDate = LocalDate.parse(item[3].toString());
                     publicationDto.setPublicationDate(publicationDate);
                 } else {
                     publicationDto.setPublicationDate(null);
                 }
-
+                */
                 //publicationDto.setPublicationDate(item[3] != null ? (Date) item[3] : null);
                 publicationDto.setIdResourceTypeCOAR(item[4] != null ? item[4].toString() : null);
                 publicationDto.setResourceTypeCOARName(item[5] != null ? item[5].toString() : null);
@@ -213,11 +215,34 @@ public class ScientificProductionImpl implements ScientificProductionService {
                 projectDto.setDescription(item[2] != null ? item[2].toString() : null);
                 projectDto.setStartDate(item[3] != null ? (Date) item[3] : null);
                 projectDto.setEndDate(item[4] != null ? (Date) item[4] : null);
-                //proAuthorDto.setIdProjectStatusTypeCONCYTEC(item[5] != null ? item[5].toString() : null);
 
+                if (item[5] != null) {
+                    System.out.println("CONCYTEC :" + item[5]);
+                    switch (item[5].toString()) {
+                        case "POR_INICIAR":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("Por iniciar");
+                            break;
+                        case "EN_EJECUCION":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("En ejecución");
+                            break;
+                        case "EN_PROCESO_CIERRRE":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("En proceso de cierre");
+                            break;
+                        case "CERRADO":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("Cerrado");
+                            break;
+                        case "CANCELADO":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("Cancelado");
+                            break;
+                        default:
+                            projectDto.setIdProjectStatusTypeCONCYTEC(item[5].toString());
+                            break;
+                    }
+                }
+                /*
                 if(item[5] != null){
                     if (Objects.equals(item[5].toString(), "POR_INICIAR")) {
-                        projectDto.setIdProjectStatusTypeCONCYTEC("Por uniciar");
+                        projectDto.setIdProjectStatusTypeCONCYTEC("Por iniciar");
                     } else {
                         if (Objects.equals(item[5].toString(), "EN_EJECUCION")) {
                             projectDto.setIdProjectStatusTypeCONCYTEC("En ejecución");
@@ -238,7 +263,7 @@ public class ScientificProductionImpl implements ScientificProductionService {
                         }
                     }
                 }
-
+*/
                 fundings = commonService.getFundingsOfProject(projectDto.getIdProject());
 
                 projectDto.setRelatedFundingList(fundings);
