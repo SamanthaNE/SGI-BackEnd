@@ -33,7 +33,6 @@ public class ResearchGroupImpl implements ResearchGroupService {
     private final CommonService commonService;
     private final QueryUtils queryUtils;
 
-
     @Override
     public ResearchGroupListResponse getResearchGroupList(ResearchGroupListRequest request) {
         validationUtils.validateKeyCode(request.getKeyCode());

@@ -11,4 +11,8 @@ public interface PublicationRepository extends JpaRepository<Publication, Intege
     Integer findLastIdPublication();
 
     Publication findPublicationByDOI(String doi);
+
+    Publication findPublicationByIdPublication(Integer idPublication);
+
+    String findDOIByIdPublication(Integer idPublication);
 }

@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface ScopusPublicationRepository extends JpaRepository<ScopusPublication, Integer> {
 
     Optional<ScopusPublication> findScopusPublicationByScopusPublicationId(Long scopusPublicationId);
+    ScopusPublication findScopusPublicationByDoi(String doi);
 }
