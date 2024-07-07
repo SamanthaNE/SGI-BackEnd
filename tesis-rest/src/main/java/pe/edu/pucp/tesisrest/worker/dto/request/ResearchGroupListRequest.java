@@ -7,7 +7,8 @@ import pe.edu.pucp.tesisrest.common.dto.base.PaginatedRequest;
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class ResearchGroupListRequest extends PaginatedRequest {
-    /*
-    private String idOrgUnit;
-     */
+    //Filters
+    private String nameGroup;
+    //private String nameOrgUnitPO;
+    private String category;
 }

@@ -9,7 +9,8 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class ResearchGroupDetailDto extends ResearchGroupDto {
-    List<ResearcherDto> researchersList = new ArrayList<>();
-    List<PublicationDto> relatedPublications = new ArrayList<>();
-    List<ProjectDto> relatedProjects = new ArrayList<>();
+    private List<ResearcherDto> researchersList = new ArrayList<>();
+    private List<PublicationDto> relatedPublications = new ArrayList<>();
+    private List<ProjectDto> relatedProjects = new ArrayList<>();
+    private List<ResearchGroupEvaluationDetail> researchGroupEvaluationDetail  = new ArrayList<>();
 }

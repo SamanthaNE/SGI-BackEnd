@@ -5,6 +5,7 @@ import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 import pe.edu.pucp.tesisrest.common.dto.ResearchGroupDto;
 import pe.edu.pucp.tesisrest.researcher.dto.ScopusAuthorDto;
 import pe.edu.pucp.tesisrest.researcher.dto.ScopusPublicationAuthorDto;
@@ -37,6 +38,8 @@ public class ScopusPublicationAuthorImpl implements ScopusPublicationAuthorServi
         StringBuilder sql = new StringBuilder();
 
         Optional<ScopusAuthor> optionalAuthor = scopusAuthorRepository.findByAuthid(request.getAuthid());
+        ScopusPublicationAuthorListResponse response = new ScopusPublicationAuthorListResponse();
+        List<ScopusAuthorDto> authors;
 
         if (optionalAuthor.isPresent()) {
             ScopusAuthor author = optionalAuthor.get();
@@ -54,49 +57,74 @@ public class ScopusPublicationAuthorImpl implements ScopusPublicationAuthorServi
             sql.append(" JOIN scopus_author_publication sap ON sp.scopus_publication_id = sap.scopus_publication_id ");
             sql.append(" WHERE sap.scopus_author_id = :author_id ");
             sql.append(" AND sap.estado = 1");
-            sql.append(" ORDER BY sp.cover_date DESC");
 
             parameters.put("author_id", author.getScopusAuthorId());
+
+            if (StringUtils.hasText(request.getTitle())) {
+                sql.append(" AND LOWER(sp.title) LIKE LOWER(CONCAT('%', :title, '%')) ");
+                parameters.put("title", request.getTitle().toLowerCase());
+            }
+
+            if (StringUtils.hasText(request.getPublisher())) {
+                sql.append(" AND LOWER(sp.publication_name) LIKE LOWER(CONCAT('%', :publicationName, '%')) ");
+                parameters.put("publicationName", request.getPublisher().toLowerCase());
+            }
+
+            if (StringUtils.hasText(request.getSubTypeDescription())) {
+                sql.append(" AND sp.sub_type_description = :subTypeDescription ");
+                parameters.put("subTypeDescription", request.getSubTypeDescription());
+            }
+
+            if (StringUtils.hasText(request.getAggregationType())) {
+                sql.append(" AND sp.aggregation_type = :aggregationType ");
+                parameters.put("aggregationType", request.getAggregationType());
+            }
+
+            if (StringUtils.hasText(request.getYear())) {
+                sql.append(" AND EXTRACT(YEAR FROM sp.cover_date) = :year ");
+                parameters.put("year", request.getYear());
+            }
+
+            sql.append(" ORDER BY sp.cover_date DESC");
+
+            Query query = entityManager.createNativeQuery(sql.toString());
+            for (Map.Entry<String, Object> entry : parameters.entrySet()) {
+                query.setParameter(entry.getKey(), entry.getValue());
+            }
+
+            List<Object[]> resultList = query.getResultList();
+
+            if(!CollectionUtils.isEmpty(resultList)){
+                for (Object[] item : resultList) {
+                    ScopusPublicationAuthorDto pubAuthorDto = new ScopusPublicationAuthorDto();
+
+                    pubAuthorDto.setScopusPublicationId(item[0] != null ? Long.valueOf(item[0].toString()) : null);
+                    pubAuthorDto.setTitle(item[1] != null ? item[1].toString() : null);
+                    pubAuthorDto.setPublicationName(item[2] != null ? item[2].toString() : null);
+                    pubAuthorDto.setCoverDate(item[3] != null ? item[3].toString() : null);
+                    pubAuthorDto.setSubTypeDescription(item[4] != null ? item[4].toString() : null);
+                    pubAuthorDto.setAggregationType(item[5] != null ? item[5].toString() : null);
+
+                    authors = getAuthorsOfPublication(pubAuthorDto.getScopusPublicationId());
+
+                    pubAuthorDto.setAuthorsList(authors);
+
+                    response.getResult().add(pubAuthorDto);
+                }
+            }
+            else{
+                System.out.println("Message: " + ResultCodeEnum.NO_RESULTS.getMessage());
+                response.setValues(ResultCodeEnum.NO_RESULTS.getCode(), ResultCodeEnum.NO_RESULTS.getMessage());
+                return response;
+            }
+
+            response.setTotal((long) response.getResult().size());
+            return response;
         } else {
             System.out.println("No author found with authid: " + request.getAuthid());
-        }
-
-        Query query = entityManager.createNativeQuery(sql.toString());
-        Set<Map.Entry<String, Object>> entrySet = parameters.entrySet();
-        for (Map.Entry<String, Object> entry : entrySet) {
-            query.setParameter(entry.getKey(), entry.getValue());
-        }
-
-        ScopusPublicationAuthorListResponse response = new ScopusPublicationAuthorListResponse();
-        List<ScopusAuthorDto> authors;
-
-        List<Object[]> resultList = query.getResultList();
-
-        if(!CollectionUtils.isEmpty(resultList)){
-            for (Object[] item : resultList) {
-                ScopusPublicationAuthorDto pubAuthorDto = new ScopusPublicationAuthorDto();
-
-                pubAuthorDto.setScopusPublicationId(item[0] != null ? Long.valueOf(item[0].toString()) : null);
-                pubAuthorDto.setTitle(item[1] != null ? item[1].toString() : null);
-                pubAuthorDto.setPublicationName(item[2] != null ? item[2].toString() : null);
-                pubAuthorDto.setCoverDate(item[3] != null ? item[3].toString() : null);
-                pubAuthorDto.setSubTypeDescription(item[4] != null ? item[4].toString() : null);
-                pubAuthorDto.setAggregationType(item[5] != null ? item[5].toString() : null);
-
-                authors = getAuthorsOfPublication(pubAuthorDto.getScopusPublicationId());
-
-                pubAuthorDto.setAuthorsList(authors);
-
-                response.getResult().add(pubAuthorDto);
-            }
-        }
-        else{
             response.setValues(ResultCodeEnum.NO_RESULTS.getCode(), ResultCodeEnum.NO_RESULTS.getMessage());
+            return response;
         }
-
-        response.setTotal((long) response.getResult().size());
-
-        return response;
     }
 
     private List<ScopusAuthorDto> getAuthorsOfPublication(Long publicationId){

@@ -11,12 +11,8 @@ import pe.edu.pucp.tesisrest.common.enums.ResultCodeEnum;
 import pe.edu.pucp.tesisrest.common.model.perfomance.*;
 import pe.edu.pucp.tesisrest.common.util.ValidationUtils;
 import pe.edu.pucp.tesisrest.worker.dto.*;
-import pe.edu.pucp.tesisrest.worker.dto.request.DisableRuleRequest;
-import pe.edu.pucp.tesisrest.worker.dto.request.NewRuleRequest;
-import pe.edu.pucp.tesisrest.worker.dto.request.PerformanceEvaluationRulesListRequest;
-import pe.edu.pucp.tesisrest.worker.dto.response.DisableRuleResponse;
-import pe.edu.pucp.tesisrest.worker.dto.response.NewRuleResponse;
-import pe.edu.pucp.tesisrest.worker.dto.response.PerformanceEvaluationRulesListResponse;
+import pe.edu.pucp.tesisrest.worker.dto.request.*;
+import pe.edu.pucp.tesisrest.worker.dto.response.*;
 import pe.edu.pucp.tesisrest.worker.repository.*;
 import pe.edu.pucp.tesisrest.worker.service.PerformanceEvaluationRulesService;
 
@@ -178,13 +174,175 @@ public class PerformanceEvaluationRulesImpl implements PerformanceEvaluationRule
         return response;
     }
 
+    @Override
+    public UpdateRuleResponse updateRule(UpdateRuleRequest request) {
+        validationUtils.validateKeyCode(request.getKeyCode());
+        UpdateRuleResponse response = new UpdateRuleResponse();
+
+        QualificationRule rule = qualificationRuleRepository.findByIdRule(request.getIdRule());
+        rule.setRuleName(request.getRuleName());
+        rule.setIdSubcategory(request.getIdSubcategory());
+
+        qualificationRuleRepository.save(rule);
+
+        Integer lastSeqFA = factAttributeRepository.findLastSeq(rule.getIdRule());
+        Integer lastSeqFR = factRangeRepository.findLastSeq(rule.getIdRule());
+        // Determinate the value of lastSeq
+        Integer lastSeq;
+        if (lastSeqFA != null && lastSeqFR != null) {
+            lastSeq = Math.max(lastSeqFA, lastSeqFR);
+        } else if (lastSeqFA != null) {
+            lastSeq = lastSeqFA;
+        } else if (lastSeqFR != null) {
+            lastSeq = lastSeqFR;
+        } else {
+            lastSeq = 1;
+        }
+
+        int updateFactSize = request.getFactGeneralListToUpdate().size();
+
+        for (int i = 0; i < updateFactSize; i++) {
+            if(request.getFactGeneralListToUpdate().get(i).getIdFA() != null){
+                FactAttributeId factAttributeId = request.getFactGeneralListToUpdate().get(i).getIdFA();
+                FactAttribute factAttribute = factAttributeRepository.findFactAttributeByIdFA(factAttributeId);
+                if(factAttribute != null){
+                    factAttribute.setScore(request.getFactGeneralListToUpdate().get(i).getScore());
+                    factAttributeRepository.save(factAttribute);
+                }
+            } else if (request.getFactGeneralListToUpdate().get(i).getIdFR() != null) {
+                FactRangeId factRangeId = request.getFactGeneralListToUpdate().get(i).getIdFR();
+                FactRange factRange = factRangeRepository.findFactRangeByIdFR(factRangeId);
+                if(factRange != null){
+                    factRange.setScore(request.getFactGeneralListToUpdate().get(i).getScore());
+                    factRangeRepository.save(factRange);
+                }
+            }
+        }
+
+        // Save criteria facts related
+        if(!request.getFactGeneralList().isEmpty()) {
+            for (NewFactGeneralDto item : request.getFactGeneralList()) {
+                lastSeq++;
+                if (Objects.equals(item.getType(), "textual")) {
+                    saveFactAttributes(rule.getIdRule(), request.getScientificType(), item, lastSeq, null);
+                } else {
+                    saveFactRanges(rule.getIdRule(), request.getScientificType(), item, lastSeq, null);
+                }
+            }
+        }
+
+        // Update multiplication factor
+        if(!request.getMultFactorListToUpdate().isEmpty()){
+            int updateMultFactorSize = request.getMultFactorListToUpdate().size();
+
+            for (int i = 0; i < updateMultFactorSize; i++) {
+                if(request.getMultFactorListToUpdate().get(i).getIdFA() != null){
+                    FactAttributeId factAttributeId = request.getMultFactorListToUpdate().get(i).getIdFA();
+                    FactAttribute factAttribute = factAttributeRepository.findFactAttributeByIdFA(factAttributeId);
+                    if(factAttribute != null){
+                        factAttribute.setScore(request.getMultFactorListToUpdate().get(i).getScore());
+                        factAttributeRepository.save(factAttribute);
+                    }
+                } else if (request.getMultFactorListToUpdate().get(i).getIdFR() != null) {
+                    FactRangeId factRangeId = request.getMultFactorListToUpdate().get(i).getIdFR();
+                    FactRange factRange = factRangeRepository.findFactRangeByIdFR(factRangeId);
+                    if(factRange != null){
+                        factRange.setScore(request.getMultFactorListToUpdate().get(i).getScore());
+                        factRangeRepository.save(factRange);
+                    }
+                }
+            }
+        }
+
+        //Save multiplication factor
+        if(!request.getMultFactorList().isEmpty()){
+            QualificationFactor multiplyFactor = qualificationFactorRepository.findQualificationFactorByIdRule(request.getIdRule());
+
+            if(multiplyFactor != null){
+                // Save multiplication factors criteria related
+                for (NewFactGeneralDto item : request.getMultFactorList()) {
+                    lastSeq++;
+                    if(Objects.equals(item.getType(), "textual")){
+                        saveFactAttributes(rule.getIdRule(), request.getScientificType(), item, lastSeq, multiplyFactor.getIdFactor());
+                    } else {
+                        saveFactAttributes(rule.getIdRule(), request.getScientificType(), item, lastSeq, multiplyFactor.getIdFactor());
+                    }
+                }
+            }
+        }
+
+        NewRuleDto newRuleDto = new NewRuleDto();
+        newRuleDto.setRule(rule);
+        response.setNewRule(newRuleDto);
+
+        return response;
+    }
+
+    @Override
+    public PerformanceEvaluationRuleDetailResponse getPerformanceEvaluationRuleDetail(PerformanceEvaluationRuleDetailRequest request) {
+        validationUtils.validateKeyCode(request.getKeyCode());
+        PerformanceEvaluationRuleDetailResponse response = new PerformanceEvaluationRuleDetailResponse();
+
+        StringBuilder sql = new StringBuilder();
+
+        sql.append(" SELECT ");
+        sql.append(" qr.id_rule, ");
+        sql.append(" qr.id_subcategory, ");
+        sql.append(" qr.qr_name, ");
+        sql.append(" qr.qr_scientific_type, ");
+        sql.append(" qf.id_factor, ");
+        sql.append(" pes.id_category ");
+
+        sql.append(" FROM qualification_rule qr ");
+        sql.append(" LEFT JOIN qualification_factor qf ON qr.id_rule = qf.id_rule ");
+        sql.append(" JOIN performance_evaluation_subcategory pes ON qr.id_subcategory = pes.id_subcategory ");
+        sql.append(" WHERE qr.id_rule = :ruleId ");
+
+        Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter("ruleId", request.getRuleId());
+
+        List<Object[]> resultList = query.getResultList();
+
+        if(!CollectionUtils.isEmpty(resultList)){
+            for (Object[] item : resultList) {
+                PerformanceEvaluationRuleDetailDto ruleDetailDto = new PerformanceEvaluationRuleDetailDto();
+
+                QualificationRule rule = new QualificationRule();
+                rule.setIdRule((Integer) item[0]);
+                rule.setIdSubcategory((Integer) item[1]);
+                rule.setRuleName((String) item[2]);
+                rule.setScientificType((String) item[3]);
+
+                ruleDetailDto.setRule(rule);
+
+                ruleDetailDto.setIdFactor((Integer) item[4]);
+
+                ruleDetailDto.setIdCategory((Integer) item[5]);
+
+                ruleDetailDto.setFactAttributeListRule(factAttributeRepository.findAllByIdRuleAndIdQFactor(request.getRuleId(), 0));
+                ruleDetailDto.setFactRangeListRule(factRangeRepository.findAllByIdRuleAndIdQFactor(request.getRuleId(), 0));
+
+                if(ruleDetailDto.getIdFactor() != null){
+                    ruleDetailDto.setFactAttributeListFactor(factAttributeRepository.findAllByIdRuleAndIdQFactor(request.getRuleId(), ruleDetailDto.getIdFactor()));
+                    ruleDetailDto.setFactRangeListFactor(factRangeRepository.findAllByIdRuleAndIdQFactor(request.getRuleId(), ruleDetailDto.getIdFactor()));
+                }
+
+                response.setRuleDetail(ruleDetailDto);
+            }
+        } else{
+            response.setValues(ResultCodeEnum.NO_RESULTS.getCode(), ResultCodeEnum.NO_RESULTS.getMessage());
+        }
+
+        return response;
+    }
+
     private void saveFactAttributes(int idRule, String scientificType, NewFactGeneralDto item, Integer lastSeq, Integer idFactor) {
         FactAttributeId factAttributeId = new FactAttributeId();
         factAttributeId.setId_rule(idRule);
         factAttributeId.setSeq(lastSeq);
 
         FactAttribute factAttribute = new FactAttribute();
-        factAttribute.setId(factAttributeId);
+        factAttribute.setIdFA(factAttributeId);
         factAttribute.setScientificType(scientificType);
         factAttribute.setAttribute(item.getAttribute());
         factAttribute.setConditionType(item.getConditionType());
@@ -205,7 +363,7 @@ public class PerformanceEvaluationRulesImpl implements PerformanceEvaluationRule
         factRangeId.setSeq(lastSeq);
 
         FactRange factRange = new FactRange();
-        factRange.setId(factRangeId);
+        factRange.setIdFR(factRangeId);
         factRange.setScientificType(scientificType);
         factRange.setAttribute(item.getAttribute());
         factRange.setConditionType(item.getConditionType());
@@ -297,7 +455,7 @@ public class PerformanceEvaluationRulesImpl implements PerformanceEvaluationRule
             factAttributeId.setSeq(lastSeq);
 
             FactAttribute factAttribute = new FactAttribute();
-            factAttribute.setId(factAttributeId);
+            factAttribute.setIdFA(factAttributeId);
             factAttribute.setScientificType(scientificType);
             factAttribute.setAttribute(item.getAttribute());
             factAttribute.setConditionType(item.getConditionType());
@@ -317,7 +475,7 @@ public class PerformanceEvaluationRulesImpl implements PerformanceEvaluationRule
             factRangeId.setSeq(lastSeq);
 
             FactRange factRange = new FactRange();
-            factRange.setId(factRangeId);
+            factRange.setIdFR(factRangeId);
             factRange.setScientificType(scientificType);
             factRange.setAttribute(item.getAttribute());
             factRange.setConditionType(item.getConditionType());

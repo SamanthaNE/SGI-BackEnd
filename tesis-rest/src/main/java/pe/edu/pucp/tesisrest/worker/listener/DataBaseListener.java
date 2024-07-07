@@ -20,19 +20,27 @@ public class DataBaseListener implements CommandLineRunner {
         while (true) {
             List<LogEntry> unprocessedEntries = logEntryService.getUnprocessedEntries();
             for (LogEntry logEntry : unprocessedEntries) {
-                processNewRecord(logEntry);
-                logEntryService.markAsProcessed(logEntry);
+                Integer status = processNewRecord(logEntry);
+                if(status == 1){
+                    logEntryService.markAsProcessed(logEntry);
+                }
             }
-            Thread.sleep(60000); // Wait 1 minute before checking again
+            Thread.sleep(600000); // Wait 10 minute before checking again
         }
     }
 
-    private void processNewRecord(LogEntry logEntry) {
+    private Integer processNewRecord(LogEntry logEntry) {
+        Integer status;
 
         System.out.println("New record in table " + logEntry.getTableName() +
                 " with ID " + logEntry.getRecordId() +
                 " and action " + logEntry.getAction());
 
-        inferenceEngineService.assignScoreToScientificProduction(logEntry);
+        status = inferenceEngineService.assignScoreToScientificProduction(logEntry);
+        if(status == 1){
+            inferenceEngineService.updateScoreToResearchGroup(logEntry);
+        }
+
+        return status;
     }
 }

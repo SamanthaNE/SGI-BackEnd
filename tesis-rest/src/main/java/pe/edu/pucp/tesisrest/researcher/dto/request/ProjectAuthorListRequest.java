@@ -9,4 +9,11 @@ import pe.edu.pucp.tesisrest.common.dto.base.Request;
 @Data
 public class ProjectAuthorListRequest extends PaginatedRequest {
     private String idPerson;
+
+    //Filters
+    private String title;
+    private String startDate;
+    private String endDate;
+    private String status;
+    private String fundingType;
 }

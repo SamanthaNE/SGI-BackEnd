@@ -20,7 +20,7 @@ import java.math.BigDecimal;
 public class FactRange extends Model {
 
     @EmbeddedId
-    private FactRangeId id;
+    private FactRangeId idFR;
 
     @Column(name = "scientific_type")
     @Size(max = 50, message = MUST_NOT_BE_GREATER_THAN_CHARS)

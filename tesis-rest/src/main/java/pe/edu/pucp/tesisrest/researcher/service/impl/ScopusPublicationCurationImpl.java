@@ -9,6 +9,7 @@ import pe.edu.pucp.tesisrest.common.model.orgunit.FunderId;
 import pe.edu.pucp.tesisrest.common.model.project.*;
 import pe.edu.pucp.tesisrest.common.model.publication.*;
 import pe.edu.pucp.tesisrest.common.model.scopus.ScopusAuthor;
+import pe.edu.pucp.tesisrest.common.model.scopus.ScopusAuthorPublication;
 import pe.edu.pucp.tesisrest.common.model.scopus.ScopusPublication;
 import pe.edu.pucp.tesisrest.common.repository.PublicationAuthorRepository;
 import pe.edu.pucp.tesisrest.common.repository.PublicationRepository;
@@ -28,6 +29,7 @@ import pe.edu.pucp.tesisrest.researcher.repository.scopus.ScopusPublicationRepos
 import pe.edu.pucp.tesisrest.researcher.service.ScopusPublicationCurationService;
 
 import java.sql.Date;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -120,6 +122,7 @@ public class ScopusPublicationCurationImpl implements ScopusPublicationCurationS
 
                 response.setPublication(publicationExist);
 
+                /*
                 Optional<ScopusAuthor> scopusAuthor = scopusAuthorRepository.findByAuthid(request.getScopusAuthorId());
                 if (scopusAuthor.isPresent()) {
                     scopusAuthorPublicationRepository.updateStatusByScopusAuthorId(0, scopusAuthor.get().getScopusAuthorId(), request.getScopusPublicationId());
@@ -129,6 +132,7 @@ public class ScopusPublicationCurationImpl implements ScopusPublicationCurationS
                     relatePublicationAuthor(request, publicationExist.getIdPublication(), scopusAuthor);
                     System.out.println("TERMINA RELACION PUBLICATION AUTHOR");
                 }
+                */
             }
             else {
                 System.out.println("NUEVA");
@@ -153,9 +157,15 @@ public class ScopusPublicationCurationImpl implements ScopusPublicationCurationS
                 publication.setPublicationYear(Integer.parseInt(numbersDate[0]));
 
                 String pageRange = scopusPublication.get().getPageRange();
-                String[] pages = pageRange.split("-");
-                publication.setStartPage(pages[0]);
-                publication.setEndPage(pages[1]);
+                if(pageRange != null){
+                    String[] pages = pageRange.split("-");
+                    publication.setStartPage(pages[0]);
+                    publication.setEndPage(pages[1]);
+                }
+                else{
+                    publication.setStartPage(null);
+                    publication.setEndPage(null);
+                }
 
                 publication.setAbstractText(scopusPublication.get().getDescription());
 
@@ -179,30 +189,73 @@ public class ScopusPublicationCurationImpl implements ScopusPublicationCurationS
 
                 publicationRepository.save(publication);
 
-                // Vincular proyectos y publicacion
-                for (String item : request.getProjectIds()) {
-                    PublicationOriginatesFromId publicationOriginatesFromId = new PublicationOriginatesFromId(newIdPublication, item);
-                    PublicationOriginatesFrom publicationOriginatesFrom = new PublicationOriginatesFrom(publicationOriginatesFromId);
-                    publicationOriginatesFromRepository.save(publicationOriginatesFrom);
+                response.setPublication(publication);
+            }
+
+            // Vincular proyectos y publicacion
+            for (String item : request.getProjectIds()) {
+                PublicationOriginatesFromId publicationOriginatesFromId = new PublicationOriginatesFromId(response.getPublication().getIdPublication(), item);
+                PublicationOriginatesFrom publicationOriginatesFrom = new PublicationOriginatesFrom(publicationOriginatesFromId);
+                publicationOriginatesFromRepository.save(publicationOriginatesFrom);
+            }
+
+            // Se actualiza el estado = 0 en scopus_author_publication para indicar que ese autor ya realizó la curación
+            Optional<ScopusAuthor> scopusAuthor = scopusAuthorRepository.findByAuthid(request.getScopusAuthorId());
+
+            List<ScopusAuthorPublication> authors = scopusAuthorPublicationRepository.getScopusAuthorPublicationByScopusPublicationId(request.getScopusPublicationId());
+            if(authors != null && !authors.isEmpty()){
+                boolean hasRelatedPublicationAuthor = true;
+                for (ScopusAuthorPublication authorPublication : authors) {
+                    if (authorPublication.getAudit().getEstado().equals(0)) {
+                        hasRelatedPublicationAuthor = false;
+                        break;
+                    }
                 }
-
-                // Se actualiza el estado = 0 en scopus_author_publication para indicar que ese autor ya realizó la curación
-                Optional<ScopusAuthor> scopusAuthor = scopusAuthorRepository.findByAuthid(request.getScopusAuthorId());
-                if (scopusAuthor.isPresent()) {
-                    System.out.println("scopus author id" + scopusAuthor.get().getScopusAuthorId());
-                    scopusAuthorPublicationRepository.updateStatusByScopusAuthorId(0, scopusAuthor.get().getScopusAuthorId(), request.getScopusPublicationId());
-                    System.out.println("UPDATEO EL STATUS");
-
-                    // Se registra en publication_author los autores
-                    relatePublicationAuthor(request, newIdPublication, scopusAuthor);
+                if(hasRelatedPublicationAuthor){
+                    relatePublicationAuthorForAuthorsList(request, response.getPublication().getIdPublication(), authors, scopusAuthor);
                     System.out.println("TERMINA RELACION PUBLICATION AUTHOR");
                 }
+            }
 
-                response.setPublication(publication);
+            if (scopusAuthor.isPresent()) {
+                System.out.println("scopus author id" + scopusAuthor.get().getScopusAuthorId());
+                scopusAuthorPublicationRepository.updateStatusByScopusAuthorId(0, scopusAuthor.get().getScopusAuthorId(), request.getScopusPublicationId());
+                System.out.println("UPDATEO EL STATUS");
+
+                // Se registra en publication_author los autores
+                // relatePublicationAuthor(request, newIdPublication, scopusAuthor);
             }
         }
 
         return response;
+    }
+
+    private void relatePublicationAuthorForAuthorsList(NewPublicationOfSPCurationRequest request, int newIdPublication, List<ScopusAuthorPublication> authors, Optional<ScopusAuthor> scopusAuthor) {
+        for(ScopusAuthorPublication authorPublication : authors){
+            PublicationAuthorId publicationAuthorId = new PublicationAuthorId(newIdPublication, authorPublication.getSeq());
+            PublicationAuthor publicationAuthor = new PublicationAuthor();
+
+            publicationAuthor.setId(publicationAuthorId);
+
+            if(scopusAuthor.isPresent() && scopusAuthor.get().getAuthid().equals(authorPublication.getScopusAuthor().getAuthid())) {
+                publicationAuthor.setScopusAuthorID(String.valueOf(request.getScopusAuthorId()));
+                publicationAuthor.setIdPerson(request.getIdPerson());
+                publicationAuthor.setIdOrgUnit(request.getResearchGroupIdOrg()); // Con el grupo seleccionado
+            } else {
+                publicationAuthor.setScopusAuthorID(null);
+                publicationAuthor.setIdPerson(null);
+                publicationAuthor.setIdOrgUnit(null);
+            }
+
+            publicationAuthor.setLinkPersonDate(null);
+            publicationAuthor.setUpdatePerson(null);
+
+            publicationAuthor.setDisplayName(authorPublication.getScopusAuthor().getAuthorName());
+            publicationAuthor.setSurname(authorPublication.getScopusAuthor().getSurname());
+            publicationAuthor.setGivenName(authorPublication.getScopusAuthor().getGivenName());
+
+            publicationAuthorRepository.save(publicationAuthor);
+        }
     }
 
     private void relatePublicationAuthor(NewPublicationOfSPCurationRequest request, int newIdPublication, Optional<ScopusAuthor> scopusAuthor) {
@@ -388,9 +441,9 @@ public class ScopusPublicationCurationImpl implements ScopusPublicationCurationS
             team.setId(projectTeamPUCPId);
             team.setIdPerson(item.getIdPerson());
             team.setIdPersonRole(item.getIdPersonRole());
+            team.setIdOrgUnit(item.getIdOrgUnit());
 
             team.setTipoRecurso(null);
-            team.setIdOrgUnit(null);
             team.setName(null);
 
             projectTeamPUCPRepository.save(team);

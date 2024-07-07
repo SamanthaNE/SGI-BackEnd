@@ -7,12 +7,10 @@ import pe.edu.pucp.tesisrest.common.dto.base.PaginatedRequest;
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class ProjectListRequest extends PaginatedRequest {
-    /*
+    //Filters
     private String title;
-    private String idOrgUnit;
-    private String dateStart;
-    private String dateEnd;
-    private String status
-    private String fundingType
-     */
+    private String startDate;
+    private String endDate;
+    private String status;
+    private String fundingType;
 }

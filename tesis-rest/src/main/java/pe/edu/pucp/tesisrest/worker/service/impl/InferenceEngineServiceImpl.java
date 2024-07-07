@@ -3,14 +3,12 @@ package pe.edu.pucp.tesisrest.worker.service.impl;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import pe.edu.pucp.tesisrest.common.dto.ResearchGroupSciProdDetailDto;
 import pe.edu.pucp.tesisrest.common.enums.ProjectAttributesEnums;
 import pe.edu.pucp.tesisrest.common.enums.PublicationAttributesEnums;
 import pe.edu.pucp.tesisrest.common.model.funding.Funding;
 import pe.edu.pucp.tesisrest.common.model.logentry.LogEntry;
-import pe.edu.pucp.tesisrest.common.model.perfomance.FactAttribute;
-import pe.edu.pucp.tesisrest.common.model.perfomance.FactRange;
-import pe.edu.pucp.tesisrest.common.model.perfomance.QualificationFactor;
-import pe.edu.pucp.tesisrest.common.model.perfomance.QualificationRule;
+import pe.edu.pucp.tesisrest.common.model.perfomance.*;
 import pe.edu.pucp.tesisrest.common.model.project.Project;
 import pe.edu.pucp.tesisrest.common.model.project.ProjectEvaluation;
 import pe.edu.pucp.tesisrest.common.model.project.ProjectFunded;
@@ -18,6 +16,7 @@ import pe.edu.pucp.tesisrest.common.model.publication.Publication;
 import pe.edu.pucp.tesisrest.common.model.publication.PublicationEvaluation;
 import pe.edu.pucp.tesisrest.common.model.scopus.ScopusPublication;
 import pe.edu.pucp.tesisrest.common.repository.PublicationRepository;
+import pe.edu.pucp.tesisrest.common.service.impl.CommonImpl;
 import pe.edu.pucp.tesisrest.researcher.repository.FundingRepository;
 import pe.edu.pucp.tesisrest.researcher.repository.ProjectFundedRepository;
 import pe.edu.pucp.tesisrest.researcher.repository.ProjectRepository;
@@ -25,7 +24,9 @@ import pe.edu.pucp.tesisrest.researcher.repository.scopus.ScopusPublicationRepos
 import pe.edu.pucp.tesisrest.worker.repository.*;
 
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.List;
 
 @Repository
@@ -47,32 +48,42 @@ public class InferenceEngineServiceImpl {
     private final FundingRepository fundingRepository;
     private final PublicationEvaluationRepository publicationEvaluationRepository;
     private final ProjectEvaluationRepository projectEvaluationRepository;
+    private final CommonImpl commonImpl;
+    private final PerformanceEvaluationRepository performanceEvaluationRepository;
+    private final OrgUnitEvaluationCategoryRangeRepository orgUnitEvaluationCategoryRangeRepository;
+    private final OrgUnitCategoryScoreRepository orgUnitCategoryScoreRepository;
+    private final PerformanceEvaluationSubcategoryRepository performanceEvaluationSubcategoryRepository;
 
-    public void assignScoreToScientificProduction(LogEntry logEntry) {
+    public Integer assignScoreToScientificProduction(LogEntry logEntry) {
+        Integer status = -1;
+
         if(logEntry.getTableName().equals("publication")) {
             Publication publication = publicationRepository.findPublicationByIdPublication(logEntry.getRecordId());
-
-            //String publicationDOI = publicationRepository.findDOIByIdPublication(logEntry.getRecordId());
 
             if(publication != null) {
                 ScopusPublication scopusPublication = scopusPublicationRepository.findScopusPublicationByDoi(publication.getDOI());
 
                 if(scopusPublication != null) {
-                    processConditionsPublication(scopusPublication, logEntry.getRecordId());
+                    status = processConditionsPublication(scopusPublication, logEntry.getRecordId());
                 }
             }
 
         } else if(logEntry.getTableName().equals("project")) {
             Project project = projectRepository.findProjectByIdProject(String.valueOf(logEntry.getRecordId()));
             ProjectFunded projectFunded = projectFundedRepository.findProjectFundedByIdProject(project.getIdProject());
-            Funding funding = fundingRepository.findFundingByIdFunding(projectFunded.getId().getIdFunding());
 
-            processConditionsProject(project, funding, logEntry.getRecordId());
+            Funding funding = new Funding();
+            if(projectFunded != null) {
+                funding = fundingRepository.findFundingByIdFunding(projectFunded.getId().getIdFunding());
+            }
+
+            status = processConditionsProject(project, funding, logEntry.getRecordId());
         }
 
+        return status;
     }
 
-    private void processConditionsPublication(ScopusPublication scopusPublication, Integer recordId) {
+    private Integer processConditionsPublication(ScopusPublication scopusPublication, Integer recordId) {
         BigDecimal score = BigDecimal.ZERO;
 
         int idRuleExecuted = -1;
@@ -153,10 +164,13 @@ public class InferenceEngineServiceImpl {
             publicationEvaluation.setTimestamp(new Timestamp(System.currentTimeMillis()));
 
             publicationEvaluationRepository.save(publicationEvaluation);
+            return 1;
         }
+
+        return 0;
     }
 
-    private void processConditionsProject(Project project, Funding funding, Integer recordId) {
+    private Integer processConditionsProject(Project project, Funding funding, Integer recordId) {
         BigDecimal score = BigDecimal.ZERO;
         int seqIni = 0, seqEnd = 1;
 
@@ -170,11 +184,11 @@ public class InferenceEngineServiceImpl {
             List<FactRange> conditionsRange = factRangeRepository.findAllByIdRuleAndIdQFactor(rule.getIdRule(), 0, "project");
 
             if((conditionsAttribute != null && !conditionsAttribute.isEmpty()) && (conditionsRange != null && !conditionsRange.isEmpty())) {
-                seqEnd = Math.max(conditionsAttribute.getLast().getId().getSeq(), conditionsRange.getLast().getId().getSeq());
+                seqEnd = Math.max(conditionsAttribute.getLast().getIdFA().getSeq(), conditionsRange.getLast().getIdFR().getSeq());
             } else if(conditionsAttribute != null && !conditionsAttribute.isEmpty()) {
-                seqEnd = conditionsAttribute.getLast().getId().getSeq();
+                seqEnd = conditionsAttribute.getLast().getIdFA().getSeq();
             } else if(conditionsRange != null && !conditionsRange.isEmpty()){
-                seqEnd = conditionsRange.getLast().getId().getSeq();
+                seqEnd = conditionsRange.getLast().getIdFR().getSeq();
             }
 
             do{
@@ -203,30 +217,32 @@ public class InferenceEngineServiceImpl {
                     for (int i = seqIni; i < seqEnd; i++) {
                         FactRange factRange = conditionsRange.get(i);
                         if(factRange.getAttribute().equals(ProjectAttributesEnums.FUNDING_AMOUNT.getAttribute())) {
-                            switch (factRange.getConditionType()) {
-                                case "[]" -> {
-                                    if (funding.getAmount().compareTo(factRange.getMinValue()) >= 0 &&
-                                            funding.getAmount().compareTo(factRange.getMaxValue()) <= 0) {
-                                        score = factRange.getScore();
-                                        idRuleExecuted = rule.getIdRule();
-                                        idSubcategory = rule.getIdSubcategory();
-                                        break;
+                            if (funding.getAmount() != null) {
+                                switch (factRange.getConditionType()) {
+                                    case "[]" -> {
+                                        if (funding.getAmount().compareTo(factRange.getMinValue()) >= 0 &&
+                                                funding.getAmount().compareTo(factRange.getMaxValue()) <= 0) {
+                                            score = factRange.getScore();
+                                            idRuleExecuted = rule.getIdRule();
+                                            idSubcategory = rule.getIdSubcategory();
+                                            break;
+                                        }
                                     }
-                                }
-                                case ">" -> {
-                                    if (funding.getAmount().compareTo(factRange.getMinValue()) >= 0) {
-                                        score = factRange.getScore();
-                                        idRuleExecuted = rule.getIdRule();
-                                        idSubcategory = rule.getIdSubcategory();
-                                        break;
+                                    case ">" -> {
+                                        if (funding.getAmount().compareTo(factRange.getMinValue()) >= 0) {
+                                            score = factRange.getScore();
+                                            idRuleExecuted = rule.getIdRule();
+                                            idSubcategory = rule.getIdSubcategory();
+                                            break;
+                                        }
                                     }
-                                }
-                                case "<" -> {
-                                    if (funding.getAmount().compareTo(factRange.getMinValue()) <= 0) {
-                                        score = factRange.getScore();
-                                        idRuleExecuted = rule.getIdRule();
-                                        idSubcategory = rule.getIdSubcategory();
-                                        break;
+                                    case "<" -> {
+                                        if (funding.getAmount().compareTo(factRange.getMinValue()) <= 0) {
+                                            score = factRange.getScore();
+                                            idRuleExecuted = rule.getIdRule();
+                                            idSubcategory = rule.getIdSubcategory();
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -244,11 +260,11 @@ public class InferenceEngineServiceImpl {
                 List<FactRange> conditionsRangeFactor = factRangeRepository.findAllByIdRuleAndIdQFactor(rule.getIdRule(), factor.getIdFactor(), "project");
 
                 if((conditionsAttributeFactor != null && !conditionsAttributeFactor.isEmpty()) && (conditionsRangeFactor != null && !conditionsRangeFactor.isEmpty())) {
-                    seqEnd = Math.max(conditionsAttributeFactor.getLast().getId().getSeq(), conditionsRangeFactor.getLast().getId().getSeq()) - seqIni;
+                    seqEnd = Math.max(conditionsAttributeFactor.getLast().getIdFA().getSeq(), conditionsRangeFactor.getLast().getIdFR().getSeq()) - seqIni;
                 } else if(conditionsAttributeFactor != null && !conditionsAttributeFactor.isEmpty()) {
-                    seqEnd = conditionsAttributeFactor.getLast().getId().getSeq() - seqIni;
+                    seqEnd = conditionsAttributeFactor.getLast().getIdFA().getSeq() - seqIni;
                 } else if(conditionsRangeFactor != null && !conditionsRangeFactor.isEmpty()){
-                    seqEnd = conditionsRangeFactor.getLast().getId().getSeq() - seqIni;;
+                    seqEnd = conditionsRangeFactor.getLast().getIdFR().getSeq() - seqIni;;
                 }
 
                 seqIni = 0;
@@ -275,27 +291,29 @@ public class InferenceEngineServiceImpl {
                         for (int i = seqIni; i < seqEnd; i++) {
                             FactRange factRangeFactor = conditionsRangeFactor.get(i);
                             if(factRangeFactor.getAttribute().equals(ProjectAttributesEnums.FUNDING_AMOUNT.getAttribute())) {
-                                switch (factRangeFactor.getConditionType()) {
-                                    case "[]" -> {
-                                        if (funding.getAmount().compareTo(factRangeFactor.getMinValue()) >= 0 &&
-                                                funding.getAmount().compareTo(factRangeFactor.getMaxValue()) <= 0) {
-                                            score = score.multiply(factRangeFactor.getScore());
-                                            break;
+                                if (funding.getAmount() != null) {
+                                    switch (factRangeFactor.getConditionType()) {
+                                        case "[]" -> {
+                                            if (funding.getAmount().compareTo(factRangeFactor.getMinValue()) >= 0 &&
+                                                    funding.getAmount().compareTo(factRangeFactor.getMaxValue()) <= 0) {
+                                                score = score.multiply(factRangeFactor.getScore());
+                                                break;
+                                            }
+                                        }
+                                        case ">" -> {
+                                            if (funding.getAmount().compareTo(factRangeFactor.getMinValue()) >= 0) {
+                                                score = score.multiply(factRangeFactor.getScore());
+                                                break;
+                                            }
+                                        }
+                                        case "<" -> {
+                                            if (funding.getAmount().compareTo(factRangeFactor.getMinValue()) <= 0) {
+                                                score = score.multiply(factRangeFactor.getScore());
+                                                break;
+                                            }
                                         }
                                     }
-                                    case ">" -> {
-                                        if (funding.getAmount().compareTo(factRangeFactor.getMinValue()) >= 0) {
-                                            score = score.multiply(factRangeFactor.getScore());
-                                            break;
-                                        }
                                     }
-                                    case "<" -> {
-                                        if (funding.getAmount().compareTo(factRangeFactor.getMinValue()) <= 0) {
-                                            score = score.multiply(factRangeFactor.getScore());
-                                            break;
-                                        }
-                                    }
-                                }
                             }
                         }
                     }
@@ -314,6 +332,129 @@ public class InferenceEngineServiceImpl {
             projectEvaluation.setTimestamp(new Timestamp(System.currentTimeMillis()));
 
             projectEvaluationRepository.save(projectEvaluation);
+
+            return 1;
+        }
+
+        return 0;
+    }
+
+    public void updateScoreToResearchGroup(LogEntry logEntry) {
+        String idOrgUnitSelected = null;
+        Integer idEvaluation, idPECategory;
+
+        if(logEntry.getTableName().equals("publication")) {
+            PublicationEvaluation publicationEvaluation;
+
+            List<PublicationEvaluation> publicationEvaluationList = publicationEvaluationRepository.findListOfPublicationEvaluationByIdPublicationOrderByTimestampAsc(logEntry.getRecordId());
+            if(publicationEvaluationList != null && !publicationEvaluationList.isEmpty()) {
+                publicationEvaluation = publicationEvaluationList.getFirst();
+            } else {
+                publicationEvaluation = publicationEvaluationRepository.findPublicationEvaluationByIdPublication(logEntry.getRecordId());
+            }
+
+            List<ResearchGroupSciProdDetailDto> researchGroups = commonImpl.getResearchGroupNamesOfPublication(Long.valueOf(logEntry.getRecordId()));
+
+            if(researchGroups != null && !researchGroups.isEmpty()) {
+                for(ResearchGroupSciProdDetailDto researchGroup : researchGroups) {
+                    if(researchGroup.getSeqPerson().equals("1")){
+                        idOrgUnitSelected = researchGroup.getIdOrgUnit();
+                        break;
+                    }
+                }
+
+                updateScore(idOrgUnitSelected, publicationEvaluation.getIdSubcategory(), publicationEvaluation.getScore());
+            }
+
+        } else if(logEntry.getTableName().equals("project")) {
+            ProjectEvaluation projectEvaluation;
+
+            List<ProjectEvaluation> projectEvaluationList = projectEvaluationRepository.findListProjectEvaluationByIdProjectOrderByTimestampAsc(String.valueOf(logEntry.getRecordId()));
+            if(projectEvaluationList != null && !projectEvaluationList.isEmpty()) {
+                projectEvaluation = projectEvaluationList.getFirst();
+            } else {
+                projectEvaluation = projectEvaluationRepository.findProjectEvaluationByIdProject(String.valueOf(logEntry.getRecordId()));
+            }
+
+            List<ResearchGroupSciProdDetailDto> researchGroups = commonImpl.getResearchGroupNamesOfProject(Long.valueOf(logEntry.getRecordId()));
+
+            if(researchGroups != null && !researchGroups.isEmpty()) {
+                for(ResearchGroupSciProdDetailDto researchGroup : researchGroups) {
+                    if(researchGroup.getIdPersonRole().equals("INVESTIGADOR_PRINCIPAL")){
+                        idOrgUnitSelected = researchGroup.getIdOrgUnit();
+                        break;
+                    }
+                }
+
+                updateScore(idOrgUnitSelected, projectEvaluation.getIdSubcategory(), projectEvaluation.getScore());
+            }
         }
     }
+
+    private void updateScore(String idOrgUnitSelected, Integer idSubcategory, BigDecimal score) {
+        PerformanceEvaluation performanceEvaluation;
+        Integer idPECategory;
+
+        if(idOrgUnitSelected != null) {
+            performanceEvaluation = validatePerformanceEvaluationExists(idOrgUnitSelected);
+            idPECategory = performanceEvaluationSubcategoryRepository.findIdCategoryByIdSubcategory(idSubcategory);
+
+            OrgUnitCategoryScore orgUnitCategoryScore = orgUnitCategoryScoreRepository.findByIdEvaluationAndIdCategory(performanceEvaluation.getIdEvaluation(), idPECategory);
+
+            if(orgUnitCategoryScore != null) {
+                orgUnitCategoryScore.setScore(orgUnitCategoryScore.getScore().add(score));
+                orgUnitCategoryScore.setQuantity(orgUnitCategoryScore.getQuantity() + 1);
+
+                orgUnitCategoryScoreRepository.save(orgUnitCategoryScore);
+            } else {
+                OrgUnitCategoryScore newOrgUnitCategoryScore = new OrgUnitCategoryScore();
+                newOrgUnitCategoryScore.setIdEvaluation(performanceEvaluation.getIdEvaluation());
+                newOrgUnitCategoryScore.setIdCategory(idPECategory);
+                newOrgUnitCategoryScore.setScore(score);
+                newOrgUnitCategoryScore.setQuantity(1);
+
+                orgUnitCategoryScoreRepository.save(newOrgUnitCategoryScore);
+
+                //To register the remaining categories initially
+                List<Integer> idCategories = performanceEvaluationSubcategoryRepository.findAllIdCategories();
+                for(Integer idCategory : idCategories) {
+                    if(!idCategory.equals(idPECategory)) {
+                        OrgUnitCategoryScore defaultOrgUnitCategoryScore = new OrgUnitCategoryScore();
+                        defaultOrgUnitCategoryScore.setIdEvaluation(performanceEvaluation.getIdEvaluation());
+                        defaultOrgUnitCategoryScore.setIdCategory(idCategory);
+                        defaultOrgUnitCategoryScore.setScore(BigDecimal.valueOf(0));
+                        defaultOrgUnitCategoryScore.setQuantity(0);
+
+                        orgUnitCategoryScoreRepository.save(defaultOrgUnitCategoryScore);
+                    }
+                }
+            }
+
+            performanceEvaluation.setTotalScore(performanceEvaluation.getTotalScore().add(score));
+            performanceEvaluationRepository.save(performanceEvaluation);
+        }
+    }
+
+    private PerformanceEvaluation validatePerformanceEvaluationExists(String idOrgUnitSelected) {
+        PerformanceEvaluation performanceEvaluation = performanceEvaluationRepository.findPerformanceEvaluationByIdOrgUnit(idOrgUnitSelected);
+
+        if(performanceEvaluation != null) {
+            return performanceEvaluation;
+        } else{
+            PerformanceEvaluation newPerformanceEvaluation = new PerformanceEvaluation();
+            newPerformanceEvaluation.setIdOrgUnit(idOrgUnitSelected);
+            newPerformanceEvaluation.setTotalScore(BigDecimal.valueOf(0));
+
+            LocalDate currentYear = LocalDate.of(LocalDate.now().getYear(), 1, 1);
+            newPerformanceEvaluation.setEvaluationYear(Date.valueOf(currentYear));
+
+            Integer categoryRange = orgUnitEvaluationCategoryRangeRepository.findIdCategoryBetweenMinValueAndMaxValue(newPerformanceEvaluation.getTotalScore());
+            newPerformanceEvaluation.setIdCategoryRange(categoryRange);
+
+            performanceEvaluationRepository.save(newPerformanceEvaluation);
+
+            return newPerformanceEvaluation;
+        }
+    }
+
 }

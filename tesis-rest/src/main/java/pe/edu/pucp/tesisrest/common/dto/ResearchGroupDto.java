@@ -11,6 +11,8 @@ public class ResearchGroupDto {
     private String partOf;
     private String namePartOf;
     private String idPersonRole;
+
     private String statusGroup;
     private String categoryGroup;
+    private Integer evaluationYear;
 }

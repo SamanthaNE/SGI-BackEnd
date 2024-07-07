@@ -10,5 +10,8 @@ import java.util.List;
 @Data
 public class ProjectDetailDto extends ProjectDto{
     private List<ResearcherDto> researchers = new ArrayList<>();
-    // Categoria / puntaje / grupos
+
+    private EvaluationDetailDto evaluationDetail;
+
+    private List<ResearchGroupSciProdDetailDto> researchGroups = new ArrayList<>();
 }

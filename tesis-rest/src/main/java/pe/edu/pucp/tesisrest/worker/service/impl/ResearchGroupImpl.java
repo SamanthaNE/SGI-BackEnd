@@ -5,8 +5,8 @@ import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.CollectionUtils;
-import pe.edu.pucp.tesisrest.common.dto.ResearchGroupDetailDto;
-import pe.edu.pucp.tesisrest.common.dto.ResearchGroupDto;
+import org.springframework.util.StringUtils;
+import pe.edu.pucp.tesisrest.common.dto.*;
 import pe.edu.pucp.tesisrest.common.enums.ResultCodeEnum;
 import pe.edu.pucp.tesisrest.common.repository.OrgUnitRepository;
 import pe.edu.pucp.tesisrest.common.service.CommonService;
@@ -48,15 +48,25 @@ public class ResearchGroupImpl implements ResearchGroupService {
         sql.append(" org.Acronym, ");
         sql.append(" org.PartOf, ");
         sql.append(" orggro.Status, ");
-        sql.append(" orggro.Category ");
+        sql.append(" orggro.Category, ");
+        sql.append(" orggro.EvaluationYear ");
 
         sql.append(" FROM orgunit org");
         sql.append(" JOIN orgunit_group orggro ON org.idOrgUnit = orggro.idOrgUnit ");
         sql.append(" WHERE org.idOrgUnit_Type = \"GRUPO\" ");
 
+        if (StringUtils.hasText(request.getNameGroup())) {
+            sql.append(" AND ( LOWER(org.Name) LIKE LOWER(CONCAT('%', :name, '%')) OR LOWER(org.idOrgUnit) LIKE LOWER(CONCAT('%', :name, '%'))) ");
+            parameters.put("name", request.getNameGroup().toLowerCase());
+        }
+
+        if (StringUtils.hasText(request.getCategory())) {
+            sql.append(" AND orggro.Category = :category ");
+            parameters.put("category", request.getCategory());
+        }
+
         Query query = entityManager.createNativeQuery(sql.toString());
-        Set<Map.Entry<String, Object>> entrySet = parameters.entrySet();
-        for (Map.Entry<String, Object> entry : entrySet) {
+        for (Map.Entry<String, Object> entry : parameters.entrySet()) {
             query.setParameter(entry.getKey(), entry.getValue());
         }
 
@@ -74,6 +84,7 @@ public class ResearchGroupImpl implements ResearchGroupService {
                 researchGroupDto.setPartOf(item[3] != null ? item[3].toString() : null);
                 researchGroupDto.setStatusGroup(item[4] != null ? item[4].toString() : null);
                 researchGroupDto.setCategoryGroup(item[5] != null ? item[5].toString() : null);
+                researchGroupDto.setEvaluationYear(item[6] != null ? (Integer) item[6] : null);
 
                 researchGroupDto.setNamePartOf(orgunitRepository.findByIdOrgUnit(researchGroupDto.getPartOf()).getName());
 
@@ -102,7 +113,8 @@ public class ResearchGroupImpl implements ResearchGroupService {
         sql.append(" org.Acronym, ");
         sql.append(" org.PartOf, ");
         sql.append(" orggro.Status, ");
-        sql.append(" orggro.Category ");
+        sql.append(" orggro.Category, ");
+        sql.append(" orggro.EvaluationYear ");
 
         sql.append(" FROM orgunit org ");
         sql.append(" JOIN orgunit_group orggro ON org.idOrgUnit = orggro.idOrgUnit ");
@@ -112,6 +124,10 @@ public class ResearchGroupImpl implements ResearchGroupService {
         query.setParameter("idOrgUnit", request.getIdOrgUnit());
 
         List<Object[]> resultList = query.getResultList();
+
+        List<PublicationDto> publications;
+        List<ProjectDto> projects;
+        List<ResearchGroupEvaluationDetail> evaluationCategories;
 
         if(!CollectionUtils.isEmpty(resultList)){
             for (Object[] item : resultList) {
@@ -123,13 +139,23 @@ public class ResearchGroupImpl implements ResearchGroupService {
                 researchGroupDto.setPartOf(item[3] != null ? item[3].toString() : null);
                 researchGroupDto.setStatusGroup(item[4] != null ? item[4].toString() : null);
                 researchGroupDto.setCategoryGroup(item[5] != null ? item[5].toString() : null);
+                researchGroupDto.setEvaluationYear(item[6] != null ? (Integer) item[6] : null);
 
                 researchGroupDto.setNamePartOf(orgunitRepository.findByIdOrgUnit(researchGroupDto.getPartOf()).getName());
 
                 researchGroupDto.setResearchersList(commonService.getResearchGroupTeam(researchGroupDto.getIdOrgUnit()));
 
-                // Publicaciones relacionadas
-                // Projectos relacionados
+                // Related publications
+                publications = commonService.getPublicationListOfAResearchGroup(researchGroupDto.getIdOrgUnit());
+                researchGroupDto.setRelatedPublications(publications);
+
+                // Related projects
+                projects = commonService.getProjectListOfAResearchGroup(researchGroupDto.getIdOrgUnit());
+                researchGroupDto.setRelatedProjects(projects);
+
+                // Evaluation detail
+                evaluationCategories = commonService.getResearchGroupEvaluationDetail(researchGroupDto.getIdOrgUnit());
+                researchGroupDto.setResearchGroupEvaluationDetail(evaluationCategories);
 
                 response.setResearchGroupDetail(researchGroupDto);
             }

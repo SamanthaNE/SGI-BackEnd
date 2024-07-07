@@ -5,12 +5,11 @@ import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.CollectionUtils;
-import pe.edu.pucp.tesisrest.common.dto.FundingListDto;
-import pe.edu.pucp.tesisrest.common.dto.ProjectDto;
-import pe.edu.pucp.tesisrest.common.dto.ResearcherDto;
+import pe.edu.pucp.tesisrest.common.dto.*;
 import pe.edu.pucp.tesisrest.common.service.CommonService;
 import pe.edu.pucp.tesisrest.researcher.dto.AuthorResearcherDto;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -135,7 +134,28 @@ public class CommonImpl implements CommonService {
             for (Object[] item : resultList) {
                 ResearcherDto researcherDto = new ResearcherDto();
 
-                researcherDto.setIdRolePerson(item[0] != null ? item[0].toString() : null);
+                //researcherDto.setIdRolePerson(item[0] != null ? item[0].toString() : null);
+
+                if (item[0] != null) {
+                    switch (item[0].toString()) {
+                        case "ASISTENTE_INVESTIGACION":
+                            researcherDto.setIdRolePerson("Asistente de investigación");
+                            break;
+                        case "CO_INVESTIGADOR":
+                            researcherDto.setIdRolePerson("Co-investigador");
+                            break;
+                        case "INVESTIGADOR_PRINCIPAL":
+                            researcherDto.setIdRolePerson("Investigador principal");
+                            break;
+                        case "COORDINADOR_GRUPO":
+                            researcherDto.setIdRolePerson("Coordinador del grupo");
+                            break;
+                        default:
+                            researcherDto.setIdRolePerson(item[0].toString());
+                            break;
+                    }
+                }
+
                 researcherDto.setRoleName(item[1] != null ? item[1].toString() : null);
                 researcherDto.setIdPerson(item[2] != null ? item[2].toString() : null);
                 researcherDto.setFirstNames(item[3] != null ? item[3].toString() : null);
@@ -219,7 +239,31 @@ public class CommonImpl implements CommonService {
                 projectDto.setDescription(item[2] != null ? item[2].toString() : null);
                 projectDto.setStartDate(item[3] != null ? (Date) item[3] : null);
                 projectDto.setEndDate(item[4] != null ? (Date) item[4] : null);
-                projectDto.setIdProjectStatusTypeCONCYTEC(item[5] != null ? item[5].toString() : null);
+
+                if (item[5] != null) {
+                    switch (item[5].toString()) {
+                        case "POR_INICIAR":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("Por iniciar");
+                            break;
+                        case "EN_EJECUCION":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("En ejecución");
+                            break;
+                        case "EN_PROCESO_CIERRRE":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("En proceso de cierre");
+                            break;
+                        case "CERRADO":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("Cerrado");
+                            break;
+                        case "CANCELADO":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("Cancelado");
+                            break;
+                        default:
+                            projectDto.setIdProjectStatusTypeCONCYTEC(item[5].toString());
+                            break;
+                    }
+                }
+
+                //projectDto.setIdProjectStatusTypeCONCYTEC(item[5] != null ? item[5].toString() : null);
 
                 fundings = getFundingsOfProject(projectDto.getIdProject());
 
@@ -230,5 +274,295 @@ public class CommonImpl implements CommonService {
         }
 
         return projects;
+    }
+
+    @Override
+    public List<EvaluationDetailDto> getEvaluationDetailOfPublication(Long publicationId) {
+        List<EvaluationDetailDto> evaluationDetaiList = new ArrayList<>();
+        StringBuilder sql = new StringBuilder();
+
+        sql.append(" SELECT ");
+        sql.append(" pec.category_name, ");
+        sql.append(" pes.subcategory_name, ");
+        sql.append(" pe.score ");
+
+        sql.append(" FROM publication_evaluation pe ");
+        sql.append(" JOIN performance_evaluation_subcategory pes ON pe.id_subcategory = pes.id_subcategory ");
+        sql.append(" JOIN performance_evaluation_category pec ON pes.id_category = pec.id_category ");
+        sql.append(" WHERE pe.idPublication = :idPublication ");
+        sql.append(" ORDER BY pe.timestamp ASC ");
+
+        Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter("idPublication", publicationId);
+
+        List<Object[]> resultList = query.getResultList();
+
+        if(!CollectionUtils.isEmpty(resultList)){
+            for (Object[] item : resultList) {
+                EvaluationDetailDto evaluationDetailDto = new EvaluationDetailDto();
+                evaluationDetailDto.setCategoryName(item[0] != null ? item[0].toString() : null);
+                evaluationDetailDto.setSubcategoryName(item[1] != null ? item[1].toString() : null);
+                evaluationDetailDto.setEvaluationScore(item[2] != null ? (BigDecimal) item[2]: null);
+
+                evaluationDetaiList.add(evaluationDetailDto);
+            }
+        }
+
+        return evaluationDetaiList;
+    }
+
+    @Override
+    public List<EvaluationDetailDto> getEvaluationDetailOfProject(Long idProject) {
+        List<EvaluationDetailDto> evaluationDetaiList = new ArrayList<>();
+        StringBuilder sql = new StringBuilder();
+
+        sql.append(" SELECT ");
+        sql.append(" pec.category_name, ");
+        sql.append(" pes.subcategory_name, ");
+        sql.append(" pe.score ");
+
+        sql.append(" FROM project_evaluation pe ");
+        sql.append(" JOIN performance_evaluation_subcategory pes ON pe.id_subcategory = pes.id_subcategory ");
+        sql.append(" JOIN performance_evaluation_category pec ON pes.id_category = pec.id_category ");
+        sql.append(" WHERE pe.idProject = :idProject ");
+        sql.append(" ORDER BY pe.timestamp ASC ");
+
+        Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter("idProject", idProject);
+
+        List<Object[]> resultList = query.getResultList();
+
+        if(!CollectionUtils.isEmpty(resultList)){
+            for (Object[] item : resultList) {
+                EvaluationDetailDto evaluationDetailDto = new EvaluationDetailDto();
+                evaluationDetailDto.setCategoryName(item[0] != null ? item[0].toString() : null);
+                evaluationDetailDto.setSubcategoryName(item[1] != null ? item[1].toString() : null);
+                evaluationDetailDto.setEvaluationScore(item[2] != null ? (BigDecimal) item[2]: null);
+
+                evaluationDetaiList.add(evaluationDetailDto);
+            }
+        }
+
+        return evaluationDetaiList;
+    }
+
+    @Override
+    public List<PublicationDto> getPublicationListOfAResearchGroup(String idOrgUnit) {
+        List<PublicationDto> publicationList = new ArrayList<>();
+        StringBuilder sql = new StringBuilder();
+
+        sql.append(" SELECT ");
+        sql.append(" pu.idPublication, ");
+        sql.append(" pu.Title, ");
+        sql.append(" pu.PublishedInDesc, ");
+        sql.append(" CASE WHEN pu.PublicationDate REGEXP '^(19|20)[0-9]{2}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])$' THEN pu.PublicationDate ELSE NULL END AS PublicationDate, ");
+        sql.append(" rtc.idResource_Type_COAR, ");
+        sql.append(" rtc.Nombre ");
+
+        sql.append(" FROM publication_author pa ");
+        sql.append(" JOIN publication pu ON pa.idPublication = pu.idPublication ");
+        sql.append(" JOIN resource_type_coar rtc ON pu.idResource_Type_COAR = rtc.idResource_Type_COAR ");
+        sql.append(" WHERE pa.idOrgUnit = :idOrgUnit ");
+
+        Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter("idOrgUnit", idOrgUnit);
+
+        List<Object[]> resultList = query.getResultList();
+        List<AuthorResearcherDto> authors;
+
+        if(!CollectionUtils.isEmpty(resultList)){
+            for (Object[] item : resultList) {
+                PublicationDto pubAuthorDto = new PublicationDto();
+
+                pubAuthorDto.setPublicationId(item[0] != null ? Long.valueOf(item[0].toString()) : null);
+                pubAuthorDto.setTitle(item[1] != null ? item[1].toString() : null);
+                pubAuthorDto.setPublishedIn(item[2] != null ? item[2].toString() : null);
+                pubAuthorDto.setPublicationDate(item[3] != null ? (Date) item[3] : null);
+                pubAuthorDto.setIdResourceTypeCOAR(item[4] != null ? item[4].toString() : null);
+                pubAuthorDto.setResourceTypeCOARName(item[5] != null ? item[5].toString() : null);
+
+                authors = getAuthorsOfPublication(pubAuthorDto.getPublicationId());
+
+                pubAuthorDto.setAuthorsList(authors);
+
+                publicationList.add(pubAuthorDto);
+            }
+        }
+
+        return publicationList;
+    }
+
+    @Override
+    public List<ProjectDto> getProjectListOfAResearchGroup(String idOrgUnit) {
+        List<ProjectDto> projects = new ArrayList<>();
+        StringBuilder sql = new StringBuilder();
+
+        sql.append(" SELECT ");
+        sql.append(" pro.idProject, ");
+        sql.append(" pro.Title, ");
+        sql.append(" pro.StartDate, ");
+        sql.append(" pro.EndDate, ");
+        sql.append(" pro.idProject_Status_Type_CONCYTEC ");
+
+        sql.append(" FROM project pro ");
+        sql.append(" JOIN project_team_pucp ptp ON ptp.idProject = pro.idProject ");
+        sql.append(" JOIN orgunit org ON ptp.idOrgUnit = org.idOrgUnit ");
+        sql.append(" WHERE org.idOrgUnit = :idOrgUnit ");
+
+        Query query = entityManager.createNativeQuery(sql.toString());
+
+        query.setParameter("idOrgUnit", idOrgUnit);
+
+        List<Object[]> resultList = query.getResultList();
+        List<FundingListDto> fundings;
+
+        if(!CollectionUtils.isEmpty(resultList)){
+            for (Object[] item : resultList) {
+                ProjectDto projectDto = new ProjectDto();
+
+                projectDto.setIdProject(item[0] != null ? Long.valueOf(item[0].toString()) : null);
+                projectDto.setTitle(item[1] != null ? item[1].toString() : null);
+                projectDto.setStartDate(item[2] != null ? (Date) item[2] : null);
+                projectDto.setEndDate(item[3] != null ? (Date) item[3] : null);
+
+                if (item[4] != null) {
+                    switch (item[4].toString()) {
+                        case "POR_INICIAR":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("Por iniciar");
+                            break;
+                        case "EN_EJECUCION":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("En ejecución");
+                            break;
+                        case "EN_PROCESO_CIERRRE":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("En proceso de cierre");
+                            break;
+                        case "CERRADO":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("Cerrado");
+                            break;
+                        case "CANCELADO":
+                            projectDto.setIdProjectStatusTypeCONCYTEC("Cancelado");
+                            break;
+                        default:
+                            projectDto.setIdProjectStatusTypeCONCYTEC(item[4].toString());
+                            break;
+                    }
+                }
+
+                //projectDto.setIdProjectStatusTypeCONCYTEC(item[5] != null ? item[5].toString() : null);
+
+                fundings = getFundingsOfProject(projectDto.getIdProject());
+
+                projectDto.setRelatedFundingList(fundings);
+
+                projects.add(projectDto);
+            }
+        }
+
+        return projects;
+    }
+
+    @Override
+    public List<ResearchGroupSciProdDetailDto> getResearchGroupNamesOfPublication(Long publicationId) {
+        List<ResearchGroupSciProdDetailDto> researchGroups = new ArrayList<>();
+        StringBuilder sql = new StringBuilder();
+
+        sql.append(" SELECT ");
+        sql.append(" org.Name, ");
+        sql.append(" pa.seqAuthor, ");
+        sql.append(" org.idOrgUnit ");
+
+        sql.append(" FROM publication_author pa ");
+        sql.append(" JOIN orgunit org ON pa.idOrgUnit = org.idOrgUnit ");
+        sql.append(" WHERE pa.idPublication = :publicationId ");
+
+        Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter("publicationId", publicationId);
+
+        List<Object[]> resultList = query.getResultList();
+
+        if(!CollectionUtils.isEmpty(resultList)){
+            for (Object[] item : resultList) {
+                ResearchGroupSciProdDetailDto researchGroup = new ResearchGroupSciProdDetailDto();
+                researchGroup.setName(item[0] != null ? item[0].toString() : null);
+                researchGroup.setSeqPerson(item[1] != null ? item[1].toString() : null);
+                researchGroup.setIdOrgUnit(item[2] != null ? item[2].toString() : null);
+
+                researchGroups.add(researchGroup);
+            }
+        }
+
+        return researchGroups;
+    }
+
+    @Override
+    public List<ResearchGroupSciProdDetailDto> getResearchGroupNamesOfProject(Long idProject) {
+        List<ResearchGroupSciProdDetailDto> researchGroups = new ArrayList<>();
+        StringBuilder sql = new StringBuilder();
+
+        sql.append(" SELECT ");
+        sql.append(" org.Name, ");
+        sql.append(" ptp.idPerson_Role, ");
+        sql.append(" org.idOrgUnit ");
+
+        sql.append(" FROM project_team_pucp ptp ");
+        sql.append(" JOIN orgunit org ON ptp.idOrgUnit = org.idOrgUnit ");
+        sql.append(" WHERE ptp.idProject = :idProject ");
+
+        Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter("idProject", idProject);
+
+        List<Object[]> resultList = query.getResultList();
+
+        if(!CollectionUtils.isEmpty(resultList)){
+            for (Object[] item : resultList) {
+                ResearchGroupSciProdDetailDto researchGroup = new ResearchGroupSciProdDetailDto();
+                researchGroup.setName(item[0] != null ? item[0].toString() : null);
+                researchGroup.setIdPersonRole(item[1] != null ? item[1].toString() : null);
+                researchGroup.setIdOrgUnit(item[2] != null ? item[2].toString() : null);
+
+                researchGroups.add(researchGroup);
+            }
+        }
+
+        return researchGroups;
+    }
+
+    @Override
+    public List<ResearchGroupEvaluationDetail> getResearchGroupEvaluationDetail(String idOrgUnit) {
+        List<ResearchGroupEvaluationDetail> researchGroupEvaluationDetails = new ArrayList<>();
+        StringBuilder sql = new StringBuilder();
+
+        sql.append(" SELECT ");
+        sql.append(" pec.category_name, ");
+        sql.append(" ocs.score, ");
+        sql.append(" ocs.quantity, ");
+        sql.append(" pec.minScore ");
+
+        sql.append(" FROM performance_evaluation pe ");
+        sql.append(" JOIN orgunit_category_score ocs ON pe.id_evaluation = ocs.id_evaluation ");
+        sql.append(" JOIN performance_evaluation_category pec ON ocs.id_category = pec.id_category ");
+        sql.append(" WHERE pe.idOrgUnit = :idOrgUnit ");
+        sql.append(" AND pe.evaluation_year like \"2024%\" ");
+        sql.append(" AND pec.category_status = \"Activo\" ");
+
+
+        Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter("idOrgUnit", idOrgUnit);
+
+        List<Object[]> resultList = query.getResultList();
+
+        if(!CollectionUtils.isEmpty(resultList)){
+            for (Object[] item : resultList) {
+                ResearchGroupEvaluationDetail researchGroupEvaluationDetail = new ResearchGroupEvaluationDetail();
+                researchGroupEvaluationDetail.setCategoryName(item[0] != null ? item[0].toString() : null);
+                researchGroupEvaluationDetail.setCategoryScore(item[1] != null ? (BigDecimal) item[1] : null);
+                researchGroupEvaluationDetail.setQuantity(item[2] != null ? (Integer) item[2] : null);
+                researchGroupEvaluationDetail.setMinimumScore(item[3] != null ? (BigDecimal) item[3] : null);
+
+                researchGroupEvaluationDetails.add(researchGroupEvaluationDetail);
+            }
+        }
+
+        return researchGroupEvaluationDetails;
     }
 }

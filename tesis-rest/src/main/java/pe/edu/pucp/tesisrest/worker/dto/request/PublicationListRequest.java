@@ -7,12 +7,11 @@ import pe.edu.pucp.tesisrest.common.dto.base.PaginatedRequest;
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class PublicationListRequest extends PaginatedRequest {
-    /*
+
     private String title;
     private String publishedIn;
-    private String authorName;
-    private String idOrgUnit;
-    private String idType;
-    private String publishedDate;
-     */
+    private String author;
+    private String resourceType;
+    private String year;
+
 }

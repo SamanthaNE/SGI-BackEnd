@@ -8,4 +8,13 @@ import pe.edu.pucp.tesisrest.common.dto.base.PaginatedRequest;
 @Data
 public class PublicationAuthorListRequest extends PaginatedRequest {
     private String scopusAuthorId;
+
+    //Filters
+    private String title;
+    private String publishedIn;
+    private String resourceType;
+    private String year;
+
+    private String author;
+    private String idOrgUnit;
 }

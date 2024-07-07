@@ -15,4 +15,8 @@ public class PublicationDetailDto extends PublicationDto {
     private String endPage;
 
     private List<ProjectDto> relatedProjects = new ArrayList<>();
+
+    private EvaluationDetailDto evaluationDetail;
+
+    private List<ResearchGroupSciProdDetailDto> researchGroups = new ArrayList<>();
 }

@@ -6,4 +6,5 @@ import lombok.Data;
 public class ProjectTeamPUCPDto {
     private String idPerson;
     private String idPersonRole;
+    private String idOrgUnit;
 }
